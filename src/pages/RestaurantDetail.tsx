@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import MenuCard from '@/components/MenuCard';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import Footer from '@/components/Footer';
-import { getRestaurantById, getMenuItemsByRestaurant } from '@/data/mockData';
+import { useRestaurant, useMenuItems } from '@/hooks/useRestaurants';
 
 const RestaurantDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,8 +14,8 @@ const RestaurantDetail = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isLiked, setIsLiked] = useState(false);
 
-  const restaurant = id ? getRestaurantById(id) : undefined;
-  const menuItems = id ? getMenuItemsByRestaurant(id) : [];
+  const { data: restaurant, isLoading: restaurantLoading } = useRestaurant(id);
+  const { data: menuItems = [], isLoading: menuLoading } = useMenuItems(id);
 
   // Get unique categories from menu items
   const menuCategories = useMemo(() => {

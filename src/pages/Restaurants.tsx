@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import RestaurantCard from '@/components/RestaurantCard';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import Footer from '@/components/Footer';
-import { restaurants, categories } from '@/data/mockData';
+import { useRestaurants, useCategories } from '@/hooks/useRestaurants';
 
 const Restaurants = () => {
   const [searchParams] = useSearchParams();
@@ -15,8 +15,10 @@ const Restaurants = () => {
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'rating' | 'deliveryTime' | 'distance'>('rating');
-  const [isLoading, setIsLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  
+  const { data: restaurants = [], isLoading } = useRestaurants();
+  const { data: categories = [] } = useCategories();
 
   const filteredRestaurants = useMemo(() => {
     let result = [...restaurants];
