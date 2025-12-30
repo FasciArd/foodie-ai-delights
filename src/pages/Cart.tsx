@@ -12,8 +12,8 @@ const Cart = () => {
   const navigate = useNavigate();
   const { items, clearCart, totalPrice, totalCalories, totalItems } = useCart();
 
-  const deliveryFee = 2.99;
-  const serviceFee = 1.49;
+  const deliveryFee = 100;
+  const serviceFee = 50;
   const finalTotal = totalPrice + deliveryFee + serviceFee;
 
   // Budget suggestions - items cheaper than average cart item price
@@ -27,8 +27,7 @@ const Cart = () => {
       toast.error('Your cart is empty');
       return;
     }
-    toast.success('Proceeding to checkout...');
-    // In a real app, navigate to checkout
+    navigate('/checkout');
   };
 
   return (
@@ -129,7 +128,7 @@ const Cart = () => {
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm truncate">{item.name}</p>
                             <p className="text-primary font-bold text-sm">
-                              ${item.price.toFixed(2)}
+                              Rs. {item.price.toFixed(0)}
                             </p>
                           </div>
                         </motion.div>
@@ -173,20 +172,20 @@ const Cart = () => {
                   <div className="space-y-3 mb-6">
                     <div className="flex justify-between text-muted-foreground">
                       <span>Subtotal</span>
-                      <span>${totalPrice.toFixed(2)}</span>
+                      <span>Rs. {totalPrice.toFixed(0)}</span>
                     </div>
                     <div className="flex justify-between text-muted-foreground">
                       <span>Delivery Fee</span>
-                      <span>${deliveryFee.toFixed(2)}</span>
+                      <span>Rs. {deliveryFee}</span>
                     </div>
                     <div className="flex justify-between text-muted-foreground">
                       <span>Service Fee</span>
-                      <span>${serviceFee.toFixed(2)}</span>
+                      <span>Rs. {serviceFee}</span>
                     </div>
                     <div className="border-t border-border pt-3">
                       <div className="flex justify-between font-bold text-lg">
                         <span className="text-foreground">Total</span>
-                        <span className="text-primary">${finalTotal.toFixed(2)}</span>
+                        <span className="text-primary">Rs. {finalTotal.toFixed(0)}</span>
                       </div>
                     </div>
                   </div>
@@ -202,7 +201,7 @@ const Cart = () => {
                   </Button>
 
                   <p className="text-xs text-center text-muted-foreground mt-4">
-                    Secure payment powered by Stripe
+                    Pay with COD, Easypaisa, JazzCash or Card
                   </p>
                 </motion.div>
               </div>

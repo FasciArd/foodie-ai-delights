@@ -6,16 +6,17 @@ import { Button } from '@/components/ui/button';
 import RestaurantCard from '@/components/RestaurantCard';
 import AICarousel from '@/components/AICarousel';
 import Footer from '@/components/Footer';
-import { getFeaturedRestaurants, menuItems, categories, restaurants } from '@/data/mockData';
+import { useFeaturedRestaurants, useRestaurants, usePopularMenuItems, useCategories } from '@/hooks/useRestaurants';
 
 const Home = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const featuredRestaurants = getFeaturedRestaurants();
-
-  // AI recommendations (popular items)
-  const aiRecommendations = menuItems.filter((item) => item.popular);
+  
+  const { data: featuredRestaurants = [] } = useFeaturedRestaurants();
+  const { data: restaurants = [] } = useRestaurants();
+  const { data: aiRecommendations = [] } = usePopularMenuItems();
+  const { data: categories = [] } = useCategories();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
