@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Search, MapPin, Clock, Sparkles, ArrowRight } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import RestaurantCard from '@/components/RestaurantCard';
@@ -14,9 +14,27 @@ const Home = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   
   const { data: featuredRestaurants = [] } = useFeaturedRestaurants();
-  const { data: restaurants = [] } = useRestaurants();
+  const { data: allRestaurants = [] } = useRestaurants();
   const { data: aiRecommendations = [] } = usePopularMenuItems();
   const { data: categories = [] } = useCategories();
+
+  // Filter restaurants by category
+  const filteredRestaurants = useMemo(() => {
+    if (selectedCategory === 'all') return allRestaurants;
+    
+    const category = categories.find(c => c.id === selectedCategory);
+    if (!category) return allRestaurants;
+
+    return allRestaurants.filter(restaurant => {
+      const categoryMatch = restaurant.category?.toLowerCase().includes(category.name.toLowerCase()) ||
+        category.name.toLowerCase().includes(restaurant.category?.toLowerCase() || '');
+      const tagMatch = restaurant.tags?.some(tag => 
+        tag.toLowerCase().includes(category.name.toLowerCase()) ||
+        category.name.toLowerCase().includes(tag.toLowerCase())
+      );
+      return categoryMatch || tagMatch;
+    });
+  }, [allRestaurants, selectedCategory, categories]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,36 +244,49 @@ const Home = () => {
         </div>
       </section>
 
-      {/* All Restaurants Preview */}
+      {/* Filtered Restaurants */}
       <section className="py-12 sm:py-16">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-                All Restaurants
+                {selectedCategory === 'all' ? 'All Restaurants' : `${categories.find(c => c.id === selectedCategory)?.name || ''} Restaurants`}
               </h2>
               <p className="text-muted-foreground">
-                Explore {restaurants.length}+ restaurants near you
+                {filteredRestaurants.length} restaurant{filteredRestaurants.length !== 1 ? 's' : ''} in Karachi
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {restaurants.slice(0, 8).map((restaurant, index) => (
-              <RestaurantCard
-                key={restaurant.id}
-                restaurant={restaurant}
-                index={index}
-              />
-            ))}
-          </div>
+          {filteredRestaurants.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-5xl mb-4">🍽️</div>
+              <h3 className="text-xl font-bold text-foreground mb-2">No restaurants found</h3>
+              <p className="text-muted-foreground mb-4">Try selecting a different category</p>
+              <Button variant="outline" onClick={() => setSelectedCategory('all')}>
+                View All
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredRestaurants.slice(0, 8).map((restaurant, index) => (
+                <RestaurantCard
+                  key={restaurant.id}
+                  restaurant={restaurant}
+                  index={index}
+                />
+              ))}
+            </div>
+          )}
 
-          <div className="mt-10 text-center">
-            <Button variant="hero" size="lg" onClick={() => navigate('/restaurants')}>
-              Explore All Restaurants
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          </div>
+          {filteredRestaurants.length > 8 && (
+            <div className="mt-10 text-center">
+              <Button variant="hero" size="lg" onClick={() => navigate(`/restaurants${selectedCategory !== 'all' ? `?category=${selectedCategory}` : ''}`)}>
+                View All {filteredRestaurants.length} Restaurants
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
