@@ -1,36 +1,31 @@
 import { motion } from 'framer-motion';
-import { Package, Clock, MapPin, CheckCircle } from 'lucide-react';
+import { Package, Clock, MapPin, CheckCircle, Truck, ChefHat, XCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Footer from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 
-// Mock order data for demonstration
-const mockOrders = [
-  {
-    id: 'ORD-001',
-    restaurantName: 'Spice Garden',
-    status: 'on-the-way',
-    items: [
-      { name: 'Butter Chicken', quantity: 2 },
-      { name: 'Garlic Naan', quantity: 4 },
-    ],
-    totalPrice: 41.94,
-    createdAt: new Date(Date.now() - 30 * 60 * 1000), // 30 mins ago
-    estimatedDelivery: '10-15 min',
-  },
-  {
-    id: 'ORD-002',
-    restaurantName: 'Sakura Sushi',
-    status: 'delivered',
-    items: [
-      { name: 'Dragon Roll', quantity: 1 },
-      { name: 'Tonkotsu Ramen', quantity: 1 },
-    ],
-    totalPrice: 30.98,
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-    estimatedDelivery: 'Delivered',
-  },
-];
+interface OrderItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+interface Order {
+  id: string;
+  restaurant_id: string | null;
+  status: 'pending' | 'preparing' | 'on_the_way' | 'delivered' | 'cancelled';
+  items: OrderItem[];
+  total_price: number;
+  delivery_address: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 const statusConfig = {
   pending: {
@@ -38,31 +33,100 @@ const statusConfig = {
     color: 'bg-muted',
     textColor: 'text-muted-foreground',
     icon: Package,
+    step: 0,
   },
   preparing: {
     label: 'Preparing',
-    color: 'bg-primary/20',
-    textColor: 'text-primary',
-    icon: Clock,
+    color: 'bg-amber-500',
+    textColor: 'text-white',
+    icon: ChefHat,
+    step: 1,
   },
-  'on-the-way': {
+  on_the_way: {
     label: 'On the Way',
     color: 'bg-primary',
     textColor: 'text-primary-foreground',
-    icon: MapPin,
+    icon: Truck,
+    step: 2,
   },
   delivered: {
     label: 'Delivered',
     color: 'bg-emerald-500',
-    textColor: 'text-primary-foreground',
+    textColor: 'text-white',
     icon: CheckCircle,
+    step: 3,
+  },
+  cancelled: {
+    label: 'Cancelled',
+    color: 'bg-destructive',
+    textColor: 'text-destructive-foreground',
+    icon: XCircle,
+    step: -1,
   },
 };
 
+const statusSteps = ['pending', 'preparing', 'on_the_way', 'delivered'] as const;
+
 const Orders = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const formatDate = (date: Date) => {
+  const { data: orders = [], isLoading, refetch } = useQuery({
+    queryKey: ['user-orders', user?.id],
+    queryFn: async (): Promise<Order[]> => {
+      if (!user?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      return (data || []).map(order => ({
+        id: order.id,
+        restaurant_id: order.restaurant_id,
+        status: order.status as Order['status'],
+        items: (Array.isArray(order.items) ? order.items : []) as unknown as OrderItem[],
+        total_price: order.total_price,
+        delivery_address: order.delivery_address,
+        notes: order.notes,
+        created_at: order.created_at,
+        updated_at: order.updated_at,
+      }));
+    },
+    enabled: !!user?.id,
+  });
+
+  // Real-time subscription for order updates
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('order-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['user-orders', user.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -75,6 +139,47 @@ const Orders = () => {
     return date.toLocaleDateString();
   };
 
+  const getEstimatedDelivery = (status: string, createdAt: string) => {
+    if (status === 'delivered') return 'Delivered';
+    if (status === 'cancelled') return 'Cancelled';
+    
+    const orderTime = new Date(createdAt);
+    const estimatedTime = new Date(orderTime.getTime() + 45 * 60 * 1000); // +45 mins
+    const now = new Date();
+    const diffMins = Math.floor((estimatedTime.getTime() - now.getTime()) / (1000 * 60));
+    
+    if (diffMins <= 0) return 'Arriving soon';
+    return `${diffMins}-${diffMins + 10} min`;
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col pt-20">
+        <section className="py-16 flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <motion.div
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-7xl mb-6"
+            >
+              🔐
+            </motion.div>
+            <h2 className="text-2xl font-bold text-foreground mb-3">
+              Login Required
+            </h2>
+            <p className="text-muted-foreground mb-8">
+              Please login to view your orders
+            </p>
+            <Button variant="hero" onClick={() => navigate('/auth')}>
+              Login / Sign Up
+            </Button>
+          </div>
+        </section>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col pt-20">
       {/* Header */}
@@ -83,20 +188,43 @@ const Orders = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between"
           >
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">
-              Your Orders
-            </h1>
-            <p className="text-muted-foreground">
-              Track your current and past orders
-            </p>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">
+                Your Orders
+              </h1>
+              <p className="text-muted-foreground">
+                Track your current and past orders
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </motion.div>
         </div>
       </section>
 
       <section className="py-8 flex-1">
         <div className="container mx-auto px-4 sm:px-6">
-          {mockOrders.length === 0 ? (
+          {isLoading ? (
+            <div className="max-w-2xl mx-auto space-y-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="card-base p-5 animate-pulse">
+                  <div className="h-6 bg-muted rounded w-1/3 mb-4" />
+                  <div className="h-4 bg-muted rounded w-1/2 mb-2" />
+                  <div className="h-20 bg-muted rounded mb-4" />
+                  <div className="h-4 bg-muted rounded w-1/4" />
+                </div>
+              ))}
+            </div>
+          ) : orders.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -113,7 +241,7 @@ const Orders = () => {
                 No orders yet
               </h2>
               <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-                You haven't placed any orders yet. Start exploring delicious food!
+                You haven't placed any orders yet. Start exploring delicious Pakistani food!
               </p>
               <Button variant="hero" onClick={() => navigate('/restaurants')}>
                 Browse Restaurants
@@ -121,9 +249,10 @@ const Orders = () => {
             </motion.div>
           ) : (
             <div className="max-w-2xl mx-auto space-y-4">
-              {mockOrders.map((order, index) => {
-                const status = statusConfig[order.status as keyof typeof statusConfig];
+              {orders.map((order, index) => {
+                const status = statusConfig[order.status];
                 const StatusIcon = status.icon;
+                const isActive = order.status !== 'delivered' && order.status !== 'cancelled';
 
                 return (
                   <motion.div
@@ -131,19 +260,16 @@ const Orders = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="card-base p-5"
+                    className={`card-base p-5 ${isActive ? 'ring-2 ring-primary/20' : ''}`}
                   >
                     {/* Header */}
                     <div className="flex items-start justify-between mb-4">
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">
-                          {order.id}
+                        <p className="text-xs text-muted-foreground mb-1 font-mono">
+                          #{order.id.slice(0, 8).toUpperCase()}
                         </p>
-                        <h3 className="font-bold text-lg text-foreground">
-                          {order.restaurantName}
-                        </h3>
                         <p className="text-sm text-muted-foreground">
-                          {formatDate(order.createdAt)}
+                          {formatDate(order.created_at)}
                         </p>
                       </div>
                       <div
@@ -152,6 +278,12 @@ const Orders = () => {
                         <StatusIcon className="w-4 h-4" />
                         <span className="text-sm font-medium">{status.label}</span>
                       </div>
+                    </div>
+
+                    {/* Delivery Address */}
+                    <div className="flex items-start gap-2 mb-4 text-sm">
+                      <MapPin className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <span className="text-muted-foreground">{order.delivery_address}</span>
                     </div>
 
                     {/* Items */}
@@ -164,6 +296,9 @@ const Orders = () => {
                           <span className="text-foreground">
                             {item.quantity}x {item.name}
                           </span>
+                          <span className="text-muted-foreground">
+                            Rs. {(item.price * item.quantity).toFixed(0)}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -172,15 +307,15 @@ const Orders = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="w-4 h-4" />
-                        <span>{order.estimatedDelivery}</span>
+                        <span>{getEstimatedDelivery(order.status, order.created_at)}</span>
                       </div>
-                      <span className="font-bold text-primary">
-                        ${order.totalPrice.toFixed(2)}
+                      <span className="font-bold text-primary text-lg">
+                        Rs. {order.total_price.toFixed(0)}
                       </span>
                     </div>
 
                     {/* Order Timeline for active orders */}
-                    {order.status !== 'delivered' && (
+                    {isActive && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
@@ -188,46 +323,55 @@ const Orders = () => {
                       >
                         <div className="flex justify-between relative">
                           <div className="absolute top-3 left-0 right-0 h-0.5 bg-border" />
-                          {['pending', 'preparing', 'on-the-way', 'delivered'].map(
-                            (step, i) => {
-                              const stepConfig = statusConfig[step as keyof typeof statusConfig];
-                              const isActive =
-                                ['pending', 'preparing', 'on-the-way', 'delivered'].indexOf(
-                                  order.status
-                                ) >= i;
-                              return (
-                                <div
-                                  key={step}
-                                  className="relative flex flex-col items-center"
+                          {statusSteps.map((step, i) => {
+                            const stepConfig = statusConfig[step];
+                            const currentStep = statusConfig[order.status].step;
+                            const isCompleted = currentStep >= i;
+                            const isCurrent = currentStep === i;
+                            
+                            return (
+                              <div
+                                key={step}
+                                className="relative flex flex-col items-center z-10"
+                              >
+                                <motion.div
+                                  animate={isCurrent ? { scale: [1, 1.2, 1] } : {}}
+                                  transition={{ duration: 1, repeat: Infinity }}
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                                    isCompleted ? 'bg-primary' : 'bg-muted'
+                                  }`}
                                 >
-                                  <div
-                                    className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                                      isActive ? 'bg-primary' : 'bg-muted'
-                                    }`}
-                                  >
-                                    <stepConfig.icon
-                                      className={`w-3 h-3 ${
-                                        isActive
-                                          ? 'text-primary-foreground'
-                                          : 'text-muted-foreground'
-                                      }`}
-                                    />
-                                  </div>
-                                  <span
-                                    className={`text-xs mt-2 ${
-                                      isActive
-                                        ? 'text-foreground'
+                                  <stepConfig.icon
+                                    className={`w-3 h-3 ${
+                                      isCompleted
+                                        ? 'text-primary-foreground'
                                         : 'text-muted-foreground'
                                     }`}
-                                  >
-                                    {stepConfig.label}
-                                  </span>
-                                </div>
-                              );
-                            }
-                          )}
+                                  />
+                                </motion.div>
+                                <span
+                                  className={`text-xs mt-2 text-center max-w-16 ${
+                                    isCompleted
+                                      ? 'text-foreground font-medium'
+                                      : 'text-muted-foreground'
+                                  }`}
+                                >
+                                  {stepConfig.label}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </motion.div>
+                    )}
+
+                    {/* Notes */}
+                    {order.notes && (
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-medium">Note:</span> {order.notes}
+                        </p>
+                      </div>
                     )}
                   </motion.div>
                 );
