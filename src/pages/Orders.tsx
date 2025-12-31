@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Package, Clock, MapPin, CheckCircle, Truck, ChefHat, XCircle, RefreshCw } from 'lucide-react';
+import { Package, Clock, MapPin, CheckCircle, Truck, ChefHat, XCircle, RefreshCw, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Footer from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-
+import { toast } from 'sonner';
 interface OrderItem {
   id: string;
   name: string;
@@ -100,7 +100,7 @@ const Orders = () => {
     enabled: !!user?.id,
   });
 
-  // Real-time subscription for order updates
+  // Real-time subscription for order updates with notifications
   useEffect(() => {
     if (!user?.id) return;
 
@@ -114,7 +114,24 @@ const Orders = () => {
           table: 'orders',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
+        (payload) => {
+          const newRecord = payload.new as Record<string, unknown>;
+          const oldRecord = payload.old as Record<string, unknown>;
+          const newStatus = newRecord?.status as string | undefined;
+          const oldStatus = oldRecord?.status as string | undefined;
+          
+          if (newStatus && newStatus !== oldStatus) {
+            const statusMessages: Record<string, string> = {
+              preparing: 'Restaurant is preparing your order 👨‍🍳',
+              on_the_way: 'Your rider is on the way! 🛵',
+              delivered: 'Order delivered! Enjoy your meal 😋',
+            };
+            
+            if (statusMessages[newStatus]) {
+              toast.success(statusMessages[newStatus]);
+            }
+          }
+          
           queryClient.invalidateQueries({ queryKey: ['user-orders', user.id] });
         }
       )
@@ -309,9 +326,21 @@ const Orders = () => {
                         <Clock className="w-4 h-4" />
                         <span>{getEstimatedDelivery(order.status, order.created_at)}</span>
                       </div>
-                      <span className="font-bold text-primary text-lg">
-                        Rs. {order.total_price.toFixed(0)}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        {isActive && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/order/${order.id}`)}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Track
+                          </Button>
+                        )}
+                        <span className="font-bold text-primary text-lg">
+                          Rs. {order.total_price.toFixed(0)}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Order Timeline for active orders */}

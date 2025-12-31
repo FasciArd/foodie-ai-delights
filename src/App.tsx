@@ -6,12 +6,14 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
+import OrderNotification from "@/components/OrderNotification";
 import Home from "./pages/Home";
 import Restaurants from "./pages/Restaurants";
 import RestaurantDetail from "./pages/RestaurantDetail";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Orders from "./pages/Orders";
+import OrderTracking from "./pages/OrderTracking";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -27,6 +29,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Navbar />
+            <OrderNotification />
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/restaurants" element={<Restaurants />} />
@@ -34,6 +37,7 @@ const App = () => (
               <Route path="/cart" element={<Cart />} />
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/orders" element={<Orders />} />
+              <Route path="/order/:id" element={<OrderTracking />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="*" element={<NotFound />} />
