@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { MenuItem } from '@/types';
 import { useCart } from '@/context/CartContext';
+import { formatPKR } from '@/lib/currency';
 
 interface AICarouselProps {
   items: MenuItem[];
@@ -99,7 +100,7 @@ const AICarousel = ({ items, title, subtitle }: AICarouselProps) => {
                   <h4 className="font-semibold text-sm mb-1 line-clamp-1">{item.name}</h4>
                   <div className="flex items-center justify-between">
                     <span className="text-primary font-bold">
-                      ${item.price.toFixed(2)}
+                      {formatPKR(item.price)}
                     </span>
                     <Button
                       variant="cart"

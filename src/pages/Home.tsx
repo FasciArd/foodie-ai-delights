@@ -6,7 +6,11 @@ import { Button } from '@/components/ui/button';
 import RestaurantCard from '@/components/RestaurantCard';
 import AICarousel from '@/components/AICarousel';
 import Footer from '@/components/Footer';
-import { useFeaturedRestaurants, useRestaurants, usePopularMenuItems, useCategories } from '@/hooks/useRestaurants';
+import HomeChefsSection from '@/components/sections/HomeChefsSection';
+import GrocerySection from '@/components/sections/GrocerySection';
+import ProMembershipBanner from '@/components/sections/ProMembershipBanner';
+import { useFeaturedRestaurants, usePopularMenuItems, useCategories } from '@/hooks/useRestaurants';
+import { useRestaurantsByCategory } from '@/hooks/useRestaurantsByCategory';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -14,27 +18,9 @@ const Home = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   
   const { data: featuredRestaurants = [] } = useFeaturedRestaurants();
-  const { data: allRestaurants = [] } = useRestaurants();
+  const { data: filteredRestaurants = [] } = useRestaurantsByCategory(selectedCategory);
   const { data: aiRecommendations = [] } = usePopularMenuItems();
   const { data: categories = [] } = useCategories();
-
-  // Filter restaurants by category
-  const filteredRestaurants = useMemo(() => {
-    if (selectedCategory === 'all') return allRestaurants;
-    
-    const category = categories.find(c => c.id === selectedCategory);
-    if (!category) return allRestaurants;
-
-    return allRestaurants.filter(restaurant => {
-      const categoryMatch = restaurant.category?.toLowerCase().includes(category.name.toLowerCase()) ||
-        category.name.toLowerCase().includes(restaurant.category?.toLowerCase() || '');
-      const tagMatch = restaurant.tags?.some(tag => 
-        tag.toLowerCase().includes(category.name.toLowerCase()) ||
-        category.name.toLowerCase().includes(tag.toLowerCase())
-      );
-      return categoryMatch || tagMatch;
-    });
-  }, [allRestaurants, selectedCategory, categories]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,6 +178,9 @@ const Home = () => {
         </div>
       </section>
 
+      {/* HomeChefs Section */}
+      <HomeChefsSection />
+
       {/* AI Recommendations */}
       <section className="py-12 sm:py-16">
         <div className="container mx-auto px-4 sm:px-6">
@@ -202,6 +191,12 @@ const Home = () => {
           />
         </div>
       </section>
+
+      {/* Grocery Section */}
+      <GrocerySection />
+
+      {/* Pro Membership Banner */}
+      <ProMembershipBanner />
 
       {/* Featured Restaurants */}
       <section className="py-12 sm:py-16 bg-gradient-warm">

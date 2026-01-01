@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Star, Clock, MapPin } from 'lucide-react';
 import { Restaurant } from '@/types';
+import { formatPKR } from '@/lib/currency';
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
@@ -65,7 +66,7 @@ const RestaurantCard = ({ restaurant, index = 0 }: RestaurantCardProps) => {
 
             {/* Tags */}
             <div className="flex flex-wrap gap-2 mb-4">
-              {restaurant.tags.slice(0, 3).map((tag) => (
+              {restaurant.tags?.slice(0, 3).map((tag) => (
                 <span
                   key={tag}
                   className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-md"
@@ -86,7 +87,7 @@ const RestaurantCard = ({ restaurant, index = 0 }: RestaurantCardProps) => {
                 <span>{restaurant.distance}</span>
               </div>
               <span className="text-primary font-semibold">
-                ${restaurant.deliveryFee.toFixed(2)} delivery
+                {formatPKR(restaurant.deliveryFee)} delivery
               </span>
             </div>
           </div>
