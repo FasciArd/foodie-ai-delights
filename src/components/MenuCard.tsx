@@ -3,6 +3,7 @@ import { Plus, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MenuItem } from '@/types';
 import { useCart } from '@/context/CartContext';
+import { formatPKR } from '@/lib/currency';
 
 interface MenuCardProps {
   item: MenuItem;
@@ -46,7 +47,7 @@ const MenuCard = ({ item, index = 0 }: MenuCardProps) => {
                 {item.name}
               </h3>
               <span className="font-bold text-lg text-primary">
-                ${item.price.toFixed(2)}
+                {formatPKR(item.price)}
               </span>
             </div>
             <p className="text-muted-foreground text-sm mb-3 line-clamp-2">

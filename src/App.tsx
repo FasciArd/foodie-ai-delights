@@ -16,6 +16,8 @@ import Orders from "./pages/Orders";
 import OrderTracking from "./pages/OrderTracking";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
+import Wallet from "./pages/Wallet";
+import ProMembership from "./pages/ProMembership";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +42,8 @@ const App = () => (
               <Route path="/order/:id" element={<OrderTracking />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/wallet" element={<Wallet />} />
+              <Route path="/pro-membership" element={<ProMembership />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
