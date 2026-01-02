@@ -88,23 +88,18 @@ export function usePopularMenuItems() {
   });
 }
 
-// Pakistani-focused categories like FoodPanda Pakistan
+// Pakistani-focused categories - only essential ones
 const PAKISTANI_CATEGORIES = [
   { id: 'all', name: 'All', icon: '🍽️' },
   { id: 'biryani', name: 'Biryani', icon: '🍚' },
   { id: 'karahi', name: 'Karahi', icon: '🥘' },
-  { id: 'bbq', name: 'BBQ & Tikka', icon: '🍖' },
-  { id: 'fast-food', name: 'Fast Food', icon: '🍔' },
+  { id: 'bbq', name: 'BBQ', icon: '🍖' },
+  { id: 'fast-food', name: 'Fast Food', icon: '🍟' },
   { id: 'desi', name: 'Desi Khana', icon: '🍛' },
-  { id: 'paratha', name: 'Paratha Roll', icon: '🌯' },
+  { id: 'paratha-roll', name: 'Paratha Roll', icon: '🌯' },
   { id: 'chinese', name: 'Chinese', icon: '🥡' },
   { id: 'pizza', name: 'Pizza', icon: '🍕' },
-  { id: 'burger', name: 'Burgers', icon: '🍔' },
-  { id: 'nihari', name: 'Nihari & Paye', icon: '🍲' },
-  { id: 'street-food', name: 'Street Food', icon: '🥙' },
-  { id: 'chai', name: 'Chai & Nashta', icon: '☕' },
-  { id: 'mithai', name: 'Mithai', icon: '🍮' },
-  { id: 'seafood', name: 'Seafood', icon: '🦐' },
+  { id: 'burger', name: 'Burger', icon: '🍔' },
 ];
 
 export function useCategories() {
