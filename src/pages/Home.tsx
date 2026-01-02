@@ -295,7 +295,7 @@ const Home = () => {
             viewport={{ once: true }}
             className="text-3xl sm:text-4xl font-bold text-primary-foreground mb-4"
           >
-            Ready to Order?
+            Hungry? Order Now!
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -304,7 +304,7 @@ const Home = () => {
             transition={{ delay: 0.1 }}
             className="text-primary-foreground/80 text-lg mb-8 max-w-xl mx-auto"
           >
-            Download our app for exclusive deals and faster checkout
+            Browse hundreds of restaurants and get your favorite food delivered in minutes
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -314,20 +314,20 @@ const Home = () => {
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
             <Button
-              variant="secondary"
               size="lg"
               className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+              onClick={() => navigate('/restaurants')}
             >
-              <span className="text-xl mr-2">🍎</span>
-              App Store
+              Browse Restaurants
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
             <Button
-              variant="secondary"
+              variant="outline"
               size="lg"
-              className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+              className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10"
+              onClick={() => navigate('/homechefs')}
             >
-              <span className="text-xl mr-2">🤖</span>
-              Google Play
+              Explore HomeChefs
             </Button>
           </motion.div>
         </div>
