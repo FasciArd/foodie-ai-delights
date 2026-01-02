@@ -7,7 +7,6 @@ import RestaurantCard from '@/components/RestaurantCard';
 import AICarousel from '@/components/AICarousel';
 import Footer from '@/components/Footer';
 import HomeChefsSection from '@/components/sections/HomeChefsSection';
-import GrocerySection from '@/components/sections/GrocerySection';
 import ProMembershipBanner from '@/components/sections/ProMembershipBanner';
 import { useFeaturedRestaurants, usePopularMenuItems, useCategories } from '@/hooks/useRestaurants';
 import { useRestaurantsByCategory } from '@/hooks/useRestaurantsByCategory';
@@ -191,9 +190,6 @@ const Home = () => {
           />
         </div>
       </section>
-
-      {/* Grocery Section */}
-      <GrocerySection />
 
       {/* Pro Membership Banner */}
       <ProMembershipBanner />
