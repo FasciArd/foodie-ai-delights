@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart, User, Menu, X, LogOut, ChefHat, Wallet, Crown, Settings } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, LogOut, ChefHat, Wallet, Crown, Settings, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -138,6 +138,10 @@ const Navbar = () => {
                   <DropdownMenuItem onClick={() => navigate('/wallet')}>
                     <Wallet className="w-4 h-4 mr-2" />
                     My Wallet
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/image-enhancer')}>
+                    <ImageIcon className="w-4 h-4 mr-2" />
+                    Image Enhancer
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('/pro-membership')}>
                     <Crown className="w-4 h-4 mr-2" />
