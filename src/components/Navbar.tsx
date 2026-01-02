@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Search, User, Menu, X, LogOut } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, LogOut, ChefHat, Wallet, Crown, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,6 +23,7 @@ const Navbar = () => {
   const navLinks = [
     { to: '/', label: 'Home' },
     { to: '/restaurants', label: 'Restaurants' },
+    { to: '/homechefs', label: 'HomeChefs', icon: <ChefHat className="w-4 h-4" /> },
     { to: '/orders', label: 'Orders' },
   ];
 
@@ -55,17 +56,18 @@ const Navbar = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`relative font-medium transition-colors duration-200 ${
+                className={`relative font-medium transition-colors duration-200 flex items-center gap-1 ${
                   isActive(link.to)
                     ? 'text-primary'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
+                {link.icon}
                 {link.label}
                 {isActive(link.to) && (
                   <motion.div
@@ -96,11 +98,7 @@ const Navbar = () => {
           </div>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Button variant="icon" size="icon" className="hidden sm:flex">
-              <Search className="w-5 h-5" />
-            </Button>
-
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link to="/cart">
               <Button variant="icon" size="icon" className="relative">
                 <ShoppingCart className="w-5 h-5" />
@@ -123,18 +121,35 @@ const Navbar = () => {
                     <User className="w-5 h-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <div className="px-2 py-1.5 text-sm font-medium">
-                    {user.email}
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-3 py-2">
+                    <p className="text-sm font-medium">{user.email}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{userRole || 'Customer'}</p>
                   </div>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    My Profile
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('/orders')}>
+                    <ShoppingCart className="w-4 h-4 mr-2" />
                     My Orders
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/wallet')}>
+                    <Wallet className="w-4 h-4 mr-2" />
+                    My Wallet
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/pro-membership')}>
+                    <Crown className="w-4 h-4 mr-2" />
+                    Pro Membership
+                  </DropdownMenuItem>
                   {userRole === 'admin' && (
-                    <DropdownMenuItem onClick={() => navigate('/admin')}>
-                      Admin Dashboard
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate('/admin')}>
+                        Admin Dashboard
+                      </DropdownMenuItem>
+                    </>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
@@ -177,12 +192,13 @@ const Navbar = () => {
                   key={link.to}
                   to={link.to}
                   onClick={() => setIsMenuOpen(false)}
-                  className={`px-4 py-3 rounded-xl font-medium transition-colors duration-200 ${
+                  className={`px-4 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center gap-2 ${
                     isActive(link.to)
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-card'
                   }`}
                 >
+                  {link.icon}
                   {link.label}
                 </Link>
               ))}
@@ -200,15 +216,31 @@ const Navbar = () => {
                 </Link>
               )}
               {user ? (
-                <button
-                  onClick={() => {
-                    handleSignOut();
-                    setIsMenuOpen(false);
-                  }}
-                  className="px-4 py-3 rounded-xl font-medium text-destructive hover:bg-card text-left"
-                >
-                  Sign Out
-                </button>
+                <>
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="px-4 py-3 rounded-xl font-medium text-muted-foreground hover:bg-card"
+                  >
+                    My Profile
+                  </Link>
+                  <Link
+                    to="/wallet"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="px-4 py-3 rounded-xl font-medium text-muted-foreground hover:bg-card"
+                  >
+                    My Wallet
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleSignOut();
+                      setIsMenuOpen(false);
+                    }}
+                    className="px-4 py-3 rounded-xl font-medium text-destructive hover:bg-card text-left"
+                  >
+                    Sign Out
+                  </button>
+                </>
               ) : (
                 <Link
                   to="/auth"

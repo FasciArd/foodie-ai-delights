@@ -7,6 +7,7 @@ import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import OrderNotification from "@/components/OrderNotification";
+import AIChatbot from "@/components/AIChatbot";
 import Home from "./pages/Home";
 import Restaurants from "./pages/Restaurants";
 import RestaurantDetail from "./pages/RestaurantDetail";
@@ -18,6 +19,9 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Wallet from "./pages/Wallet";
 import ProMembership from "./pages/ProMembership";
+import Profile from "./pages/Profile";
+import RoleRegistration from "./pages/RoleRegistration";
+import HomeChefs from "./pages/HomeChefs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,8 +48,12 @@ const App = () => (
               <Route path="/admin" element={<Admin />} />
               <Route path="/wallet" element={<Wallet />} />
               <Route path="/pro-membership" element={<ProMembership />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/register" element={<RoleRegistration />} />
+              <Route path="/homechefs" element={<HomeChefs />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <AIChatbot />
           </BrowserRouter>
         </TooltipProvider>
       </CartProvider>

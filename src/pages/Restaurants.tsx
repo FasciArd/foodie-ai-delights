@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,21 +7,36 @@ import RestaurantCard from '@/components/RestaurantCard';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import Footer from '@/components/Footer';
 import { useRestaurants, useCategories } from '@/hooks/useRestaurants';
+import { useRestaurantsByCategory } from '@/hooks/useRestaurantsByCategory';
 
 const Restaurants = () => {
   const [searchParams] = useSearchParams();
   const initialSearch = searchParams.get('search') || '';
+  const initialCategory = searchParams.get('category') || 'all';
   
   const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [sortBy, setSortBy] = useState<'rating' | 'deliveryTime' | 'distance'>('rating');
   const [showFilters, setShowFilters] = useState(false);
   
-  const { data: restaurants = [], isLoading } = useRestaurants();
+  const { data: allRestaurants = [], isLoading: isLoadingAll } = useRestaurants();
+  const { data: categoryRestaurants = [], isLoading: isLoadingCategory } = useRestaurantsByCategory(selectedCategory);
   const { data: categories = [] } = useCategories();
 
+  // Use category filtered data when category is selected
+  const baseRestaurants = selectedCategory === 'all' ? allRestaurants : categoryRestaurants;
+  const isLoading = selectedCategory === 'all' ? isLoadingAll : isLoadingCategory;
+
+  // Update category from URL when it changes
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
+  }, [searchParams]);
+
   const filteredRestaurants = useMemo(() => {
-    let result = [...restaurants];
+    let result = [...baseRestaurants];
 
     // Filter by search query
     if (searchQuery) {
@@ -30,40 +45,33 @@ const Restaurants = () => {
         (r) =>
           r.name.toLowerCase().includes(query) ||
           r.category.toLowerCase().includes(query) ||
-          r.tags.some((tag) => tag.toLowerCase().includes(query))
-      );
-    }
-
-    // Filter by category
-    if (selectedCategory !== 'all') {
-      result = result.filter(
-        (r) => r.category.toLowerCase() === selectedCategory.toLowerCase()
+          r.tags?.some((tag) => tag.toLowerCase().includes(query))
       );
     }
 
     // Sort
     switch (sortBy) {
       case 'rating':
-        result.sort((a, b) => b.rating - a.rating);
+        result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
       case 'deliveryTime':
         result.sort((a, b) => {
-          const aTime = parseInt(a.deliveryTime.split('-')[0]);
-          const bTime = parseInt(b.deliveryTime.split('-')[0]);
+          const aTime = parseInt(a.deliveryTime?.split('-')[0] || '0');
+          const bTime = parseInt(b.deliveryTime?.split('-')[0] || '0');
           return aTime - bTime;
         });
         break;
       case 'distance':
         result.sort((a, b) => {
-          const aDist = parseFloat(a.distance);
-          const bDist = parseFloat(b.distance);
+          const aDist = parseFloat(a.distance || '0');
+          const bDist = parseFloat(b.distance || '0');
           return aDist - bDist;
         });
         break;
     }
 
     return result;
-  }, [searchQuery, selectedCategory, sortBy]);
+  }, [baseRestaurants, searchQuery, sortBy]);
 
   return (
     <div className="min-h-screen flex flex-col pt-20">
