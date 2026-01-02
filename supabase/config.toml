@@ -1,1 +1,13 @@
 project_id = "spmoudblcmyhzycgfvhi"
+
+[functions.ai-chatbot]
+verify_jwt = false
+
+[functions.enhance-image]
+verify_jwt = false
+
+[functions.calculate-calories]
+verify_jwt = false
+
+[functions.get-mapbox-token]
+verify_jwt = false

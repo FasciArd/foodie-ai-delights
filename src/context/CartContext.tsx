@@ -67,7 +67,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     0
   );
   const totalCalories = items.reduce(
-    (sum, item) => sum + item.menuItem.calories * item.quantity,
+    (sum, item) => sum + (item.menuItem.calories || 0) * item.quantity,
     0
   );
 

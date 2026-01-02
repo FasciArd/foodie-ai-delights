@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Search, MapPin, Clock, Sparkles, ArrowRight } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import RestaurantCard from '@/components/RestaurantCard';
@@ -8,18 +8,14 @@ import AICarousel from '@/components/AICarousel';
 import Footer from '@/components/Footer';
 import HomeChefsSection from '@/components/sections/HomeChefsSection';
 import ProMembershipBanner from '@/components/sections/ProMembershipBanner';
-import { useFeaturedRestaurants, usePopularMenuItems, useCategories } from '@/hooks/useRestaurants';
-import { useRestaurantsByCategory } from '@/hooks/useRestaurantsByCategory';
+import { useFeaturedRestaurants, usePopularMenuItems } from '@/hooks/useRestaurants';
 
 const Home = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
   
   const { data: featuredRestaurants = [] } = useFeaturedRestaurants();
-  const { data: filteredRestaurants = [] } = useRestaurantsByCategory(selectedCategory);
   const { data: aiRecommendations = [] } = usePopularMenuItems();
-  const { data: categories = [] } = useCategories();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,29 +149,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Categories */}
-      <section className="py-8 border-b border-border/50">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-            {categories.map((category) => (
-              <motion.button
-                key={category.id}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-full whitespace-nowrap transition-all ${
-                  selectedCategory === category.id
-                    ? 'bg-primary text-primary-foreground shadow-glow'
-                    : 'bg-card text-foreground border border-border hover:border-primary'
-                }`}
-              >
-                <span className="text-xl">{category.icon}</span>
-                <span className="font-medium">{category.name}</span>
-              </motion.button>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* HomeChefs Section */}
       <HomeChefsSection />
@@ -232,52 +205,6 @@ const Home = () => {
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
-        </div>
-      </section>
-
-      {/* Filtered Restaurants */}
-      <section className="py-12 sm:py-16">
-        <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-                {selectedCategory === 'all' ? 'All Restaurants' : `${categories.find(c => c.id === selectedCategory)?.name || ''} Restaurants`}
-              </h2>
-              <p className="text-muted-foreground">
-                {filteredRestaurants.length} restaurant{filteredRestaurants.length !== 1 ? 's' : ''} in Karachi
-              </p>
-            </div>
-          </div>
-
-          {filteredRestaurants.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-5xl mb-4">🍽️</div>
-              <h3 className="text-xl font-bold text-foreground mb-2">No restaurants found</h3>
-              <p className="text-muted-foreground mb-4">Try selecting a different category</p>
-              <Button variant="outline" onClick={() => setSelectedCategory('all')}>
-                View All
-              </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredRestaurants.slice(0, 8).map((restaurant, index) => (
-                <RestaurantCard
-                  key={restaurant.id}
-                  restaurant={restaurant}
-                  index={index}
-                />
-              ))}
-            </div>
-          )}
-
-          {filteredRestaurants.length > 8 && (
-            <div className="mt-10 text-center">
-              <Button variant="hero" size="lg" onClick={() => navigate(`/restaurants${selectedCategory !== 'all' ? `?category=${selectedCategory}` : ''}`)}>
-                View All {filteredRestaurants.length} Restaurants
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </div>
-          )}
         </div>
       </section>
 

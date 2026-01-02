@@ -7,6 +7,7 @@ import MenuCard from '@/components/MenuCard';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import Footer from '@/components/Footer';
 import { useRestaurant, useMenuItems } from '@/hooks/useRestaurants';
+import { formatPKR } from '@/lib/currency';
 
 const RestaurantDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -134,7 +135,7 @@ const RestaurantDetail = () => {
                 <span>{restaurant.distance}</span>
               </div>
               <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-semibold">
-                ${restaurant.deliveryFee.toFixed(2)} delivery
+                {formatPKR(restaurant.deliveryFee || 0)} delivery
               </span>
             </div>
           </motion.div>
