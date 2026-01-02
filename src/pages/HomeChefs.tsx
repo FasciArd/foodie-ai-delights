@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { ChefHat, Star, Clock, Heart, Search, MapPin } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -80,7 +80,7 @@ const allHomeChefs = [
   },
 ];
 
-const HomeChefs = () => {
+const HomeChefs = forwardRef<HTMLDivElement>((_, ref) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArea, setSelectedArea] = useState('all');
 
@@ -94,7 +94,7 @@ const HomeChefs = () => {
   });
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div ref={ref} className="min-h-screen flex flex-col">
       {/* Hero */}
       <section className="pt-24 pb-12 bg-gradient-hero">
         <div className="container mx-auto px-4 sm:px-6">
@@ -234,6 +234,8 @@ const HomeChefs = () => {
       <Footer />
     </div>
   );
-};
+});
+
+HomeChefs.displayName = 'HomeChefs';
 
 export default HomeChefs;
