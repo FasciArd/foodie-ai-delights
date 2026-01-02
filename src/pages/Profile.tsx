@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPKR } from '@/lib/currency';
+import ImageEnhancer from '@/components/ImageEnhancer';
 
 interface ProfileData {
   name: string;
@@ -246,6 +247,13 @@ const Profile = () => {
               <span>My Orders</span>
             </Button>
           </div>
+
+          {/* Image Enhancer for Restaurant Owners */}
+          {(userRole === 'restaurant' || userRole === 'admin') && (
+            <div className="mt-6">
+              <ImageEnhancer onEnhanced={(url) => setProfile({ ...profile, avatar_url: url })} />
+            </div>
+          )}
         </motion.div>
       </div>
     </div>
