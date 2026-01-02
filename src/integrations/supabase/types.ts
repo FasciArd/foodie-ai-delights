@@ -210,39 +210,134 @@ export type Database = {
           },
         ]
       }
-      profiles: {
+      pre_orders: {
         Row: {
-          address: string | null
-          avatar_url: string | null
           created_at: string
-          email: string
+          delivery_address: string
           id: string
-          name: string
-          phone: string | null
+          items: Json
+          notes: string | null
+          restaurant_id: string
+          scheduled_date: string
+          scheduled_time: string
+          status: string
+          total_price: number
           updated_at: string
           user_id: string
         }
         Insert: {
-          address?: string | null
-          avatar_url?: string | null
           created_at?: string
-          email: string
+          delivery_address: string
           id?: string
-          name: string
-          phone?: string | null
+          items?: Json
+          notes?: string | null
+          restaurant_id: string
+          scheduled_date: string
+          scheduled_time: string
+          status?: string
+          total_price: number
           updated_at?: string
           user_id: string
         }
         Update: {
-          address?: string | null
-          avatar_url?: string | null
           created_at?: string
-          email?: string
+          delivery_address?: string
           id?: string
-          name?: string
-          phone?: string | null
+          items?: Json
+          notes?: string | null
+          restaurant_id?: string
+          scheduled_date?: string
+          scheduled_time?: string
+          status?: string
+          total_price?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pre_orders_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          avatar_url: string | null
+          bank_account: string | null
+          bio: string | null
+          business_license: string | null
+          cnic: string | null
+          created_at: string
+          cuisine_type: string | null
+          email: string
+          emergency_contact: string | null
+          id: string
+          license_plate: string | null
+          name: string
+          operating_hours: string | null
+          phone: string | null
+          phone_verified: boolean | null
+          profile_complete: boolean | null
+          restaurant_name: string | null
+          role: string | null
+          updated_at: string
+          user_id: string
+          vehicle_type: string | null
+          wallet_balance: number | null
+        }
+        Insert: {
+          address?: string | null
+          avatar_url?: string | null
+          bank_account?: string | null
+          bio?: string | null
+          business_license?: string | null
+          cnic?: string | null
+          created_at?: string
+          cuisine_type?: string | null
+          email: string
+          emergency_contact?: string | null
+          id?: string
+          license_plate?: string | null
+          name: string
+          operating_hours?: string | null
+          phone?: string | null
+          phone_verified?: boolean | null
+          profile_complete?: boolean | null
+          restaurant_name?: string | null
+          role?: string | null
+          updated_at?: string
+          user_id: string
+          vehicle_type?: string | null
+          wallet_balance?: number | null
+        }
+        Update: {
+          address?: string | null
+          avatar_url?: string | null
+          bank_account?: string | null
+          bio?: string | null
+          business_license?: string | null
+          cnic?: string | null
+          created_at?: string
+          cuisine_type?: string | null
+          email?: string
+          emergency_contact?: string | null
+          id?: string
+          license_plate?: string | null
+          name?: string
+          operating_hours?: string | null
+          phone?: string | null
+          phone_verified?: boolean | null
+          profile_complete?: boolean | null
+          restaurant_name?: string | null
+          role?: string | null
+          updated_at?: string
+          user_id?: string
+          vehicle_type?: string | null
+          wallet_balance?: number | null
         }
         Relationships: []
       }
@@ -320,6 +415,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          order_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
