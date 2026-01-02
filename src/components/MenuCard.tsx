@@ -57,9 +57,11 @@ const MenuCard = ({ item, index = 0 }: MenuCardProps) => {
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="bg-secondary px-2 py-1 rounded-md">
-                {item.calories} cal
-              </span>
+              {item.calories && item.calories > 0 && (
+                <span className="bg-secondary px-2 py-1 rounded-md">
+                  {item.calories} cal
+                </span>
+              )}
               <span className="bg-secondary px-2 py-1 rounded-md">
                 {item.category}
               </span>
