@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import OrderNotification from "@/components/OrderNotification";
 import AIChatbot from "@/components/AIChatbot";
+import PushNotificationPrompt from "@/components/PushNotificationPrompt";
 import Home from "./pages/Home";
 import Restaurants from "./pages/Restaurants";
 import RestaurantDetail from "./pages/RestaurantDetail";
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
             <AIChatbot />
+            <PushNotificationPrompt />
           </BrowserRouter>
         </TooltipProvider>
       </CartProvider>
