@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import MenuCard from '@/components/MenuCard';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import Footer from '@/components/Footer';
+import ReviewSection from '@/components/ReviewSection';
 import { useRestaurant, useMenuItems } from '@/hooks/useRestaurants';
 import { formatPKR } from '@/lib/currency';
-
 const RestaurantDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -210,6 +210,9 @@ const RestaurantDetail = () => {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Reviews */}
+          {id && <ReviewSection restaurantId={id} />}
         </div>
       </section>
 
