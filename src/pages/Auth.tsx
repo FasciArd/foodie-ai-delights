@@ -14,7 +14,10 @@ import { z } from 'zod';
 type AuthMethod = 'email' | 'phone';
 type AuthStep = 'method' | 'credentials' | 'otp';
 
-const emailSchema = z.string().email('Please enter a valid email address');
+const emailSchema = z
+  .string()
+  .email('Please enter a valid email address')
+  .refine((v) => v.toLowerCase().endsWith('@gmail.com'), 'Only Gmail addresses are allowed');
 const phoneSchema = z.string()
   .regex(/^\+?[0-9]{10,14}$/, 'Please enter a valid phone number (e.g., +923001234567)');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -42,6 +45,19 @@ const Auth = () => {
       navigate('/');
     }
   }, [user, navigate]);
+
+  // Show auth restriction errors (set by AuthProvider)
+  useEffect(() => {
+    const msg = localStorage.getItem('auth_error');
+    if (!msg) return;
+
+    toast({
+      title: 'Sign-in blocked',
+      description: msg,
+      variant: 'destructive',
+    });
+    localStorage.removeItem('auth_error');
+  }, [toast]);
 
   const validateEmail = (value: string) => {
     const result = emailSchema.safeParse(value);
