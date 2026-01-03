@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, MapPin, Camera, Save, ArrowLeft } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Camera, Save, ArrowLeft, Store, Bike, ChefHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -110,6 +110,21 @@ const Profile = () => {
     }
   };
 
+  const getRoleDashboardLink = () => {
+    switch (userRole) {
+      case 'restaurant':
+        return { path: '/restaurant-dashboard', label: 'Restaurant Dashboard', icon: <Store className="w-5 h-5" /> };
+      case 'driver':
+        return { path: '/delivery-dashboard', label: 'Delivery Dashboard', icon: <Bike className="w-5 h-5" /> };
+      case 'admin':
+        return { path: '/admin', label: 'Admin Dashboard', icon: <ChefHat className="w-5 h-5" /> };
+      default:
+        return null;
+    }
+  };
+
+  const roleLink = getRoleDashboardLink();
+
   if (loading) {
     return (
       <div className="min-h-screen pt-24 pb-12 flex items-center justify-center">
@@ -160,6 +175,33 @@ const Profile = () => {
               </div>
             </div>
           </div>
+
+          {/* Role-specific Dashboard Link */}
+          {roleLink && (
+            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 mb-6">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start gap-3 text-primary hover:text-primary"
+                onClick={() => navigate(roleLink.path)}
+              >
+                {roleLink.icon}
+                <span className="font-medium">Go to {roleLink.label}</span>
+              </Button>
+            </div>
+          )}
+
+          {/* Switch Role Banner */}
+          {userRole === 'customer' && (
+            <div className="bg-gradient-to-r from-primary/10 to-secondary/50 rounded-2xl p-6 mb-6 border border-primary/20">
+              <h3 className="font-semibold text-foreground mb-2">Want to earn money?</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Register as a Restaurant Owner or Delivery Partner
+              </p>
+              <Button variant="outline" size="sm" onClick={() => navigate('/role-registration')}>
+                Change Role
+              </Button>
+            </div>
+          )}
 
           {/* Form */}
           <div className="bg-card rounded-2xl p-6 border border-border space-y-6">

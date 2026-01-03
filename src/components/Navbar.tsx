@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart, User, Menu, X, LogOut, ChefHat, Wallet, Crown, Settings, ImageIcon } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, LogOut, ChefHat, Wallet, Crown, Settings, ImageIcon, Store, Bike } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,12 +20,36 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const navLinks = [
-    { to: '/', label: 'Home' },
-    { to: '/restaurants', label: 'Restaurants' },
-    { to: '/homechefs', label: 'HomeChefs', icon: <ChefHat className="w-4 h-4" /> },
-    { to: '/orders', label: 'Orders' },
-  ];
+  // Role-based navigation
+  const getNavLinks = (): { to: string; label: string; icon?: React.ReactNode }[] => {
+    const baseLinks: { to: string; label: string; icon?: React.ReactNode }[] = [
+      { to: '/', label: 'Home' },
+      { to: '/restaurants', label: 'Restaurants' },
+    ];
+
+    if (userRole === 'restaurant') {
+      return [
+        ...baseLinks,
+        { to: '/restaurant-dashboard', label: 'My Restaurant', icon: <Store className="w-4 h-4" /> },
+      ];
+    }
+
+    if (userRole === 'driver') {
+      return [
+        { to: '/', label: 'Home' },
+        { to: '/delivery-dashboard', label: 'Deliveries', icon: <Bike className="w-4 h-4" /> },
+      ];
+    }
+
+    // Customer or default
+    return [
+      ...baseLinks,
+      { to: '/homechefs', label: 'HomeChefs', icon: <ChefHat className="w-4 h-4" /> },
+      { to: '/orders', label: 'Orders' },
+    ];
+  };
+
+  const navLinks = getNavLinks();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -131,14 +155,35 @@ const Navbar = () => {
                     <Settings className="w-4 h-4 mr-2" />
                     My Profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/orders')}>
-                    <ShoppingCart className="w-4 h-4 mr-2" />
-                    My Orders
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/wallet')}>
-                    <Wallet className="w-4 h-4 mr-2" />
-                    My Wallet
-                  </DropdownMenuItem>
+                  
+                  {/* Role-specific menu items */}
+                  {userRole === 'restaurant' && (
+                    <DropdownMenuItem onClick={() => navigate('/restaurant-dashboard')}>
+                      <Store className="w-4 h-4 mr-2" />
+                      Restaurant Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  
+                  {userRole === 'driver' && (
+                    <DropdownMenuItem onClick={() => navigate('/delivery-dashboard')}>
+                      <Bike className="w-4 h-4 mr-2" />
+                      Delivery Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  
+                  {(userRole === 'customer' || !userRole) && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate('/orders')}>
+                        <ShoppingCart className="w-4 h-4 mr-2" />
+                        My Orders
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/wallet')}>
+                        <Wallet className="w-4 h-4 mr-2" />
+                        My Wallet
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  
                   <DropdownMenuItem onClick={() => navigate('/image-enhancer')}>
                     <ImageIcon className="w-4 h-4 mr-2" />
                     Image Enhancer
@@ -147,6 +192,7 @@ const Navbar = () => {
                     <Crown className="w-4 h-4 mr-2" />
                     Pro Membership
                   </DropdownMenuItem>
+                  
                   {userRole === 'admin' && (
                     <>
                       <DropdownMenuSeparator />

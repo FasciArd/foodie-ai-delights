@@ -24,6 +24,8 @@ import Profile from "./pages/Profile";
 import RoleRegistration from "./pages/RoleRegistration";
 import HomeChefs from "./pages/HomeChefs";
 import ImageEnhancer from "./pages/ImageEnhancer";
+import RestaurantDashboard from "./pages/RestaurantDashboard";
+import DeliveryDashboard from "./pages/DeliveryDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,8 +54,11 @@ const App = () => (
               <Route path="/pro-membership" element={<ProMembership />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/register" element={<RoleRegistration />} />
+              <Route path="/role-registration" element={<RoleRegistration />} />
               <Route path="/homechefs" element={<HomeChefs />} />
               <Route path="/image-enhancer" element={<ImageEnhancer />} />
+              <Route path="/restaurant-dashboard" element={<RestaurantDashboard />} />
+              <Route path="/delivery-dashboard" element={<DeliveryDashboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <AIChatbot />
