@@ -24,28 +24,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserRole(session.user.id);
-      }
-      setLoading(false);
-    });
+  const isAllowedEmail = (email?: string | null) =>
+    !!email && email.toLowerCase().endsWith('@gmail.com');
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          fetchUserRole(session.user.id);
+  const isAllowedUser = (u: User) => Boolean(u.phone) || isAllowedEmail(u.email);
+
+  const enforceAllowedUser = async (s: Session | null) => {
+    if (!s?.user) return;
+    if (isAllowedUser(s.user)) return;
+
+    // Used by /auth to show a friendly message
+    localStorage.setItem(
+      'auth_error',
+      'Only Gmail accounts or phone OTP sign-in are allowed.'
+    );
+
+    await supabase.auth.signOut();
+  };
+
+  useEffect(() => {
+    // Listener FIRST (prevents missing auth events)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      setUser(s?.user ?? null);
+      setLoading(false);
+
+      // Never call Supabase directly inside the callback
+      setTimeout(() => {
+        if (s?.user) {
+          void enforceAllowedUser(s);
+          void fetchUserRole(s.user.id);
         } else {
           setUserRole(null);
         }
-        setLoading(false);
-      }
-    );
+      }, 0);
+    });
+
+    // THEN hydrate
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      setUser(s?.user ?? null);
+      setLoading(false);
+
+      setTimeout(() => {
+        if (s?.user) {
+          void enforceAllowedUser(s);
+          void fetchUserRole(s.user.id);
+        } else {
+          setUserRole(null);
+        }
+      }, 0);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -63,17 +94,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, name: string) => {
+    if (!email.toLowerCase().endsWith('@gmail.com')) {
+      return { error: new Error('Only Gmail addresses are allowed.') };
+    }
+
+    const redirectUrl = `${window.location.origin}/`;
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { name }
-      }
+        data: { name },
+        emailRedirectTo: redirectUrl,
+      },
     });
+
     return { error: error as Error | null };
   };
 
   const signIn = async (email: string, password: string) => {
+    if (!email.toLowerCase().endsWith('@gmail.com')) {
+      return { error: new Error('Only Gmail addresses are allowed.') };
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
