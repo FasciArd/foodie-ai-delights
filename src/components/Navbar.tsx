@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart, User, Menu, X, LogOut, ChefHat, Wallet, Crown, Settings, ImageIcon, Store, Bike } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, LogOut, ChefHat, Wallet, Crown, Settings, ImageIcon, Store, Bike, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
+import { getRoleDashboardPath } from '@/components/RoleBasedRedirect';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,43 +21,50 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Role-based navigation
+  // Role-based navigation links
   const getNavLinks = (): { to: string; label: string; icon?: React.ReactNode }[] => {
-    const baseLinks: { to: string; label: string; icon?: React.ReactNode }[] = [
-      { to: '/', label: 'Home' },
-      { to: '/restaurants', label: 'Restaurants' },
-    ];
-
+    // Restaurant owners
     if (userRole === 'restaurant') {
       return [
-        ...baseLinks,
         { to: '/restaurant-dashboard', label: 'My Restaurant', icon: <Store className="w-4 h-4" /> },
+        { to: '/restaurants', label: 'Browse Restaurants' },
       ];
     }
 
+    // Drivers
     if (userRole === 'driver') {
       return [
-        { to: '/', label: 'Home' },
         { to: '/delivery-dashboard', label: 'Deliveries', icon: <Bike className="w-4 h-4" /> },
       ];
     }
 
-    // Customer or default
+    // Admins
+    if (userRole === 'admin') {
+      return [
+        { to: '/admin', label: 'Admin Dashboard' },
+        { to: '/restaurants', label: 'Restaurants' },
+      ];
+    }
+
+    // Customers (default)
     return [
-      ...baseLinks,
+      { to: '/', label: 'Home' },
+      { to: '/restaurants', label: 'Restaurants' },
       { to: '/homechefs', label: 'HomeChefs', icon: <ChefHat className="w-4 h-4" /> },
-      { to: '/orders', label: 'Orders' },
+      { to: '/orders', label: 'Orders', icon: <Package className="w-4 h-4" /> },
     ];
   };
 
   const navLinks = getNavLinks();
-
   const isActive = (path: string) => location.pathname === path;
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
   };
+
+  // Only show cart for customers
+  const showCart = !userRole || userRole === 'customer';
 
   return (
     <motion.nav
@@ -67,7 +75,7 @@ const Navbar = () => {
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
+          <Link to={getRoleDashboardPath(userRole)} className="flex items-center gap-2 group">
             <motion.div
               whileHover={{ rotate: 15 }}
               className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center"
@@ -101,42 +109,27 @@ const Navbar = () => {
                 )}
               </Link>
             ))}
-            {userRole === 'admin' && (
-              <Link
-                to="/admin"
-                className={`relative font-medium transition-colors duration-200 ${
-                  isActive('/admin')
-                    ? 'text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Admin
-                {isActive('/admin') && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full"
-                  />
-                )}
-              </Link>
-            )}
           </div>
 
           {/* Right Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link to="/cart">
-              <Button variant="icon" size="icon" className="relative">
-                <ShoppingCart className="w-5 h-5" />
-                {totalItems > 0 && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center font-bold"
-                  >
-                    {totalItems}
-                  </motion.span>
-                )}
-              </Button>
-            </Link>
+            {/* Cart - only for customers */}
+            {showCart && (
+              <Link to="/cart">
+                <Button variant="icon" size="icon" className="relative">
+                  <ShoppingCart className="w-5 h-5" />
+                  {totalItems > 0 && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center font-bold"
+                    >
+                      {totalItems}
+                    </motion.span>
+                  )}
+                </Button>
+              </Link>
+            )}
 
             {user ? (
               <DropdownMenu>
@@ -151,6 +144,7 @@ const Navbar = () => {
                     <p className="text-xs text-muted-foreground capitalize">{userRole || 'Customer'}</p>
                   </div>
                   <DropdownMenuSeparator />
+                  
                   <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <Settings className="w-4 h-4 mr-2" />
                     My Profile
@@ -171,10 +165,10 @@ const Navbar = () => {
                     </DropdownMenuItem>
                   )}
                   
-                  {(userRole === 'customer' || !userRole) && (
+                  {userRole === 'customer' && (
                     <>
                       <DropdownMenuItem onClick={() => navigate('/orders')}>
-                        <ShoppingCart className="w-4 h-4 mr-2" />
+                        <Package className="w-4 h-4 mr-2" />
                         My Orders
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate('/wallet')}>
@@ -188,10 +182,13 @@ const Navbar = () => {
                     <ImageIcon className="w-4 h-4 mr-2" />
                     Image Enhancer
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/pro-membership')}>
-                    <Crown className="w-4 h-4 mr-2" />
-                    Pro Membership
-                  </DropdownMenuItem>
+                  
+                  {userRole === 'customer' && (
+                    <DropdownMenuItem onClick={() => navigate('/pro-membership')}>
+                      <Crown className="w-4 h-4 mr-2" />
+                      Pro Membership
+                    </DropdownMenuItem>
+                  )}
                   
                   {userRole === 'admin' && (
                     <>
@@ -201,6 +198,7 @@ const Navbar = () => {
                       </DropdownMenuItem>
                     </>
                   )}
+                  
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                     <LogOut className="w-4 h-4 mr-2" />
@@ -252,19 +250,7 @@ const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
-              {userRole === 'admin' && (
-                <Link
-                  to="/admin"
-                  onClick={() => setIsMenuOpen(false)}
-                  className={`px-4 py-3 rounded-xl font-medium transition-colors duration-200 ${
-                    isActive('/admin')
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-card'
-                  }`}
-                >
-                  Admin
-                </Link>
-              )}
+              
               {user ? (
                 <>
                   <Link
@@ -274,13 +260,15 @@ const Navbar = () => {
                   >
                     My Profile
                   </Link>
-                  <Link
-                    to="/wallet"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="px-4 py-3 rounded-xl font-medium text-muted-foreground hover:bg-card"
-                  >
-                    My Wallet
-                  </Link>
+                  {userRole === 'customer' && (
+                    <Link
+                      to="/wallet"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="px-4 py-3 rounded-xl font-medium text-muted-foreground hover:bg-card"
+                    >
+                      My Wallet
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       handleSignOut();

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Store, Bike, ArrowRight, ArrowLeft, Phone, MapPin, FileText, Clock, CreditCard, AlertCircle } from 'lucide-react';
+import { User, Store, Bike, ArrowRight, ArrowLeft, Phone, MapPin, FileText, Clock, CreditCard, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,8 +9,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { getRoleDashboardPath } from '@/components/RoleBasedRedirect';
+import type { Database } from '@/integrations/supabase/types';
 
-type Role = 'customer' | 'restaurant' | 'driver';
+type Role = Database['public']['Enums']['app_role'];
 
 interface RoleOption {
   id: Role;
@@ -41,11 +43,11 @@ const roles: RoleOption[] = [
 ];
 
 const RoleRegistration = () => {
-  const { user } = useAuth();
+  const { user, userRole, changeRole, refreshRole } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
-  const [selectedRole, setSelectedRole] = useState<Role>('customer');
+  const [selectedRole, setSelectedRole] = useState<Role>(userRole || 'customer');
   const [loading, setLoading] = useState(false);
   
   // Common fields
@@ -74,7 +76,11 @@ const RoleRegistration = () => {
 
     setLoading(true);
     try {
-      // Update profile with role-specific info
+      // 1) Change role via RPC (secure backend function)
+      const { error: roleError } = await changeRole(selectedRole);
+      if (roleError) throw roleError;
+
+      // 2) Update profile with role-specific info
       const profileUpdate: Record<string, any> = {
         name,
         phone,
@@ -106,15 +112,7 @@ const RoleRegistration = () => {
 
       if (profileError) throw profileError;
 
-      // Update user role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .update({ role: selectedRole })
-        .eq('user_id', user.id);
-
-      if (roleError) throw roleError;
-
-      // If driver, create driver record
+      // 3) If driver, create driver record
       if (selectedRole === 'driver') {
         const { error: driverError } = await supabase
           .from('drivers')
@@ -125,15 +123,22 @@ const RoleRegistration = () => {
             status: 'offline',
           });
 
+        // Ignore duplicate error
         if (driverError && driverError.code !== '23505') throw driverError;
       }
 
+      // 4) Refresh role in context
+      await refreshRole();
+
       toast({
-        title: 'Registration Complete!',
+        title: 'Registration Complete! ✅',
         description: `Your ${selectedRole} account has been set up successfully.`,
       });
 
-      navigate('/');
+      // 5) Redirect to role-specific dashboard
+      const dashboardPath = getRoleDashboardPath(selectedRole);
+      navigate(dashboardPath, { replace: true });
+      
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -170,10 +175,13 @@ const RoleRegistration = () => {
             }`}>
               {role.icon}
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="font-semibold text-foreground">{role.title}</h3>
               <p className="text-sm text-muted-foreground">{role.description}</p>
             </div>
+            {selectedRole === role.id && (
+              <CheckCircle className="w-5 h-5 text-primary" />
+            )}
           </button>
         ))}
       </div>

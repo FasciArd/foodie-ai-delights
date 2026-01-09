@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, MapPin, Camera, Save, ArrowLeft, Store, Bike, ChefHat } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Camera, Save, ArrowLeft, Store, Bike, ChefHat, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPKR } from '@/lib/currency';
+import { getRoleDashboardPath } from '@/components/RoleBasedRedirect';
 import ImageEnhancer from '@/components/ImageEnhancer';
 
 interface ProfileData {
@@ -23,7 +24,7 @@ interface ProfileData {
 }
 
 const Profile = () => {
-  const { user, userRole } = useAuth();
+  const { user, userRole, loading: authLoading, roleLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -39,12 +40,13 @@ const Profile = () => {
   });
 
   useEffect(() => {
+    if (authLoading || roleLoading) return;
     if (!user) {
       navigate('/auth');
       return;
     }
     fetchProfile();
-  }, [user, navigate]);
+  }, [user, navigate, authLoading, roleLoading]);
 
   const fetchProfile = async () => {
     if (!user) return;
@@ -110,7 +112,7 @@ const Profile = () => {
     }
   };
 
-  const getRoleDashboardLink = () => {
+  const getDashboardInfo = () => {
     switch (userRole) {
       case 'restaurant':
         return { path: '/restaurant-dashboard', label: 'Restaurant Dashboard', icon: <Store className="w-5 h-5" /> };
@@ -123,9 +125,9 @@ const Profile = () => {
     }
   };
 
-  const roleLink = getRoleDashboardLink();
+  const dashboardInfo = getDashboardInfo();
 
-  if (loading) {
+  if (loading || authLoading || roleLoading) {
     return (
       <div className="min-h-screen pt-24 pb-12 flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -169,36 +171,42 @@ const Profile = () => {
               <div>
                 <h2 className="text-xl font-bold text-foreground">{profile.name || 'User'}</h2>
                 <p className="text-muted-foreground capitalize">{userRole || 'Customer'}</p>
-                <p className="text-primary font-medium mt-1">
-                  Wallet: {formatPKR(profile.wallet_balance)}
-                </p>
+                {userRole === 'customer' && (
+                  <p className="text-primary font-medium mt-1">
+                    Wallet: {formatPKR(profile.wallet_balance)}
+                  </p>
+                )}
               </div>
             </div>
           </div>
 
           {/* Role-specific Dashboard Link */}
-          {roleLink && (
+          {dashboardInfo && (
             <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 mb-6">
               <Button 
                 variant="ghost" 
-                className="w-full justify-start gap-3 text-primary hover:text-primary"
-                onClick={() => navigate(roleLink.path)}
+                className="w-full justify-between gap-3 text-primary hover:text-primary"
+                onClick={() => navigate(dashboardInfo.path)}
               >
-                {roleLink.icon}
-                <span className="font-medium">Go to {roleLink.label}</span>
+                <div className="flex items-center gap-3">
+                  {dashboardInfo.icon}
+                  <span className="font-medium">Go to {dashboardInfo.label}</span>
+                </div>
+                <ArrowRight className="w-5 h-5" />
               </Button>
             </div>
           )}
 
-          {/* Switch Role Banner */}
+          {/* Switch Role Banner - Only for customers */}
           {userRole === 'customer' && (
             <div className="bg-gradient-to-r from-primary/10 to-secondary/50 rounded-2xl p-6 mb-6 border border-primary/20">
               <h3 className="font-semibold text-foreground mb-2">Want to earn money?</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Register as a Restaurant Owner or Delivery Partner
+                Register as a Restaurant Owner or Delivery Partner to start earning
               </p>
               <Button variant="outline" size="sm" onClick={() => navigate('/role-registration')}>
                 Change Role
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           )}
@@ -278,17 +286,19 @@ const Profile = () => {
             </Button>
           </div>
 
-          {/* Quick Links */}
-          <div className="grid grid-cols-2 gap-4 mt-6">
-            <Button variant="outline" onClick={() => navigate('/wallet')} className="h-auto py-4 flex-col">
-              <span className="text-2xl mb-2">💰</span>
-              <span>My Wallet</span>
-            </Button>
-            <Button variant="outline" onClick={() => navigate('/orders')} className="h-auto py-4 flex-col">
-              <span className="text-2xl mb-2">📦</span>
-              <span>My Orders</span>
-            </Button>
-          </div>
+          {/* Quick Links - Customers only */}
+          {userRole === 'customer' && (
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <Button variant="outline" onClick={() => navigate('/wallet')} className="h-auto py-4 flex-col">
+                <span className="text-2xl mb-2">💰</span>
+                <span>My Wallet</span>
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/orders')} className="h-auto py-4 flex-col">
+                <span className="text-2xl mb-2">📦</span>
+                <span>My Orders</span>
+              </Button>
+            </div>
+          )}
 
           {/* Image Enhancer for Restaurant Owners */}
           {(userRole === 'restaurant' || userRole === 'admin') && (

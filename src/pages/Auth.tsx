@@ -9,6 +9,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { getRoleDashboardPath } from '@/components/RoleBasedRedirect';
 import { z } from 'zod';
 
 type AuthMethod = 'email' | 'phone';
@@ -35,16 +36,17 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; phone?: string; password?: string }>({});
   
-  const { signIn, signUp, signInWithGoogle, user } = useAuth();
+  const { signIn, signUp, signInWithGoogle, user, userRole, roleLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Redirect if already logged in
+  // Redirect if already logged in - use role-based redirect
   useEffect(() => {
-    if (user) {
-      navigate('/');
+    if (user && !roleLoading && userRole) {
+      const dashboardPath = getRoleDashboardPath(userRole);
+      navigate(dashboardPath, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, userRole, roleLoading, navigate]);
 
   // Show auth restriction errors (set by AuthProvider)
   useEffect(() => {
@@ -101,12 +103,12 @@ const Auth = () => {
         const { error } = await signIn(email, password);
         if (error) throw error;
         toast({ title: 'Welcome back!', description: 'You have successfully signed in.' });
-        navigate('/');
+        // Role-based redirect happens in useEffect
       } else {
         const { error } = await signUp(email, password, name);
         if (error) throw error;
         toast({ title: 'Account created!', description: 'Welcome to FoodieHub.' });
-        navigate('/');
+        // Role-based redirect happens in useEffect
       }
     } catch (error: any) {
       let errorMessage = error.message || 'Something went wrong';
