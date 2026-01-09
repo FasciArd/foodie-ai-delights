@@ -3,6 +3,7 @@ import { Plus, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MenuItem } from '@/types';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/hooks/useAuth';
 import { formatPKR } from '@/lib/currency';
 
 interface MenuCardProps {
@@ -12,6 +13,10 @@ interface MenuCardProps {
 
 const MenuCard = ({ item, index = 0 }: MenuCardProps) => {
   const { addItem } = useCart();
+  const { userRole } = useAuth();
+
+  // Only customers can add to cart
+  const canAddToCart = !userRole || userRole === 'customer';
 
   return (
     <motion.div
@@ -67,16 +72,18 @@ const MenuCard = ({ item, index = 0 }: MenuCardProps) => {
               </span>
             </div>
             
-            <motion.div whileTap={{ scale: 0.9 }}>
-              <Button
-                variant="cart"
-                size="icon"
-                onClick={() => addItem(item)}
-                className="shrink-0"
-              >
-                <Plus className="w-5 h-5" />
-              </Button>
-            </motion.div>
+            {canAddToCart && (
+              <motion.div whileTap={{ scale: 0.9 }}>
+                <Button
+                  variant="cart"
+                  size="icon"
+                  onClick={() => addItem(item)}
+                  className="shrink-0"
+                >
+                  <Plus className="w-5 h-5" />
+                </Button>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>

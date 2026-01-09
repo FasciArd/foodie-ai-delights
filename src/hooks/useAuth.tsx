@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
@@ -10,10 +10,13 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   userRole: AppRole | null;
+  roleLoading: boolean;
   signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  changeRole: (newRole: AppRole) => Promise<{ error: Error | null }>;
+  refreshRole: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<AppRole | null>(null);
+  const [roleLoading, setRoleLoading] = useState(true);
 
   const isAllowedEmail = (email?: string | null) =>
     !!email && email.toLowerCase().endsWith('@gmail.com');
@@ -33,7 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!s?.user) return;
     if (isAllowedUser(s.user)) return;
 
-    // Used by /auth to show a friendly message
     localStorage.setItem(
       'auth_error',
       'Only Gmail accounts or phone OTP sign-in are allowed.'
@@ -42,8 +45,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  // Fetch role using RPC (ensure_my_role creates if missing)
+  const fetchUserRole = useCallback(async () => {
+    setRoleLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('ensure_my_role');
+      if (error) {
+        console.error('Error fetching role:', error);
+        setUserRole('customer'); // fallback
+      } else {
+        setUserRole(data as AppRole);
+      }
+    } catch (err) {
+      console.error('Error in fetchUserRole:', err);
+      setUserRole('customer');
+    } finally {
+      setRoleLoading(false);
+    }
+  }, []);
+
+  const refreshRole = useCallback(async () => {
+    await fetchUserRole();
+  }, [fetchUserRole]);
+
+  // Change role using RPC (set_my_role)
+  const changeRole = useCallback(async (newRole: AppRole): Promise<{ error: Error | null }> => {
+    try {
+      const { data, error } = await supabase.rpc('set_my_role', { _role: newRole });
+      if (error) {
+        return { error: new Error(error.message) };
+      }
+      setUserRole(data as AppRole);
+      return { error: null };
+    } catch (err: any) {
+      return { error: err };
+    }
+  }, []);
+
   useEffect(() => {
-    // Listener FIRST (prevents missing auth events)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -51,18 +90,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(s?.user ?? null);
       setLoading(false);
 
-      // Never call Supabase directly inside the callback
       setTimeout(() => {
         if (s?.user) {
           void enforceAllowedUser(s);
-          void fetchUserRole(s.user.id);
+          void fetchUserRole();
         } else {
           setUserRole(null);
+          setRoleLoading(false);
         }
       }, 0);
     });
 
-    // THEN hydrate
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       setUser(s?.user ?? null);
@@ -71,27 +109,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setTimeout(() => {
         if (s?.user) {
           void enforceAllowedUser(s);
-          void fetchUserRole(s.user.id);
+          void fetchUserRole();
         } else {
           setUserRole(null);
+          setRoleLoading(false);
         }
       }, 0);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchUserRole = async (userId: string) => {
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .single();
-    
-    if (data) {
-      setUserRole(data.role);
-    }
-  };
+  }, [fetchUserRole]);
 
   const signUp = async (email: string, password: string, name: string) => {
     if (!email.toLowerCase().endsWith('@gmail.com')) {
@@ -136,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUserRole(null);
   };
 
   return (
@@ -144,10 +172,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       loading,
       userRole,
+      roleLoading,
       signUp,
       signIn,
       signInWithGoogle,
       signOut,
+      changeRole,
+      refreshRole,
     }}>
       {children}
     </AuthContext.Provider>

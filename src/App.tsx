@@ -9,6 +9,7 @@ import Navbar from "@/components/Navbar";
 import OrderNotification from "@/components/OrderNotification";
 import AIChatbot from "@/components/AIChatbot";
 import PushNotificationPrompt from "@/components/PushNotificationPrompt";
+import RoleGuard from "@/components/RoleGuard";
 import Home from "./pages/Home";
 import Restaurants from "./pages/Restaurants";
 import RestaurantDetail from "./pages/RestaurantDetail";
@@ -41,24 +42,68 @@ const App = () => (
             <Navbar />
             <OrderNotification />
             <Routes>
+              {/* Public routes */}
               <Route path="/" element={<Home />} />
               <Route path="/restaurants" element={<Restaurants />} />
               <Route path="/restaurant/:id" element={<RestaurantDetail />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/order/:id" element={<OrderTracking />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/wallet" element={<Wallet />} />
+              <Route path="/homechefs" element={<HomeChefs />} />
               <Route path="/pro-membership" element={<ProMembership />} />
+              
+              {/* Customer-only routes */}
+              <Route path="/cart" element={
+                <RoleGuard allowedRoles={['customer']} fallbackPath="/">
+                  <Cart />
+                </RoleGuard>
+              } />
+              <Route path="/checkout" element={
+                <RoleGuard allowedRoles={['customer']} fallbackPath="/">
+                  <Checkout />
+                </RoleGuard>
+              } />
+              <Route path="/orders" element={
+                <RoleGuard allowedRoles={['customer']} fallbackPath="/">
+                  <Orders />
+                </RoleGuard>
+              } />
+              <Route path="/order/:id" element={
+                <RoleGuard allowedRoles={['customer']} fallbackPath="/">
+                  <OrderTracking />
+                </RoleGuard>
+              } />
+              <Route path="/wallet" element={
+                <RoleGuard allowedRoles={['customer']} fallbackPath="/">
+                  <Wallet />
+                </RoleGuard>
+              } />
+              
+              {/* Restaurant owner routes */}
+              <Route path="/restaurant-dashboard" element={
+                <RoleGuard allowedRoles={['restaurant', 'admin']} fallbackPath="/">
+                  <RestaurantDashboard />
+                </RoleGuard>
+              } />
+              
+              {/* Driver routes */}
+              <Route path="/delivery-dashboard" element={
+                <RoleGuard allowedRoles={['driver', 'admin']} fallbackPath="/">
+                  <DeliveryDashboard />
+                </RoleGuard>
+              } />
+              
+              {/* Admin routes */}
+              <Route path="/admin" element={
+                <RoleGuard allowedRoles={['admin']} fallbackPath="/">
+                  <Admin />
+                </RoleGuard>
+              } />
+              
+              {/* Authenticated routes (any role) */}
               <Route path="/profile" element={<Profile />} />
               <Route path="/register" element={<RoleRegistration />} />
               <Route path="/role-registration" element={<RoleRegistration />} />
-              <Route path="/homechefs" element={<HomeChefs />} />
               <Route path="/image-enhancer" element={<ImageEnhancer />} />
-              <Route path="/restaurant-dashboard" element={<RestaurantDashboard />} />
-              <Route path="/delivery-dashboard" element={<DeliveryDashboard />} />
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
             <AIChatbot />

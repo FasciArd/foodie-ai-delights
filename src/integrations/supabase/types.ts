@@ -524,6 +524,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ensure_my_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -535,6 +539,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      set_my_role: {
+        Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
     }
     Enums: {
       app_role: "customer" | "restaurant" | "driver" | "admin"
@@ -545,6 +553,8 @@ export type Database = {
         | "on_the_way"
         | "delivered"
         | "cancelled"
+        | "ready_for_pickup"
+        | "picked_up"
       payment_method: "easypaisa" | "jazzcash" | "stripe" | "cod"
       payment_status: "pending" | "success" | "failed"
     }
@@ -682,6 +692,8 @@ export const Constants = {
         "on_the_way",
         "delivered",
         "cancelled",
+        "ready_for_pickup",
+        "picked_up",
       ],
       payment_method: ["easypaisa", "jazzcash", "stripe", "cod"],
       payment_status: ["pending", "success", "failed"],
