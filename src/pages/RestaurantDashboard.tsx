@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Store, UtensilsCrossed, Package, BarChart3, Plus, Edit2, Trash2, 
   Clock, DollarSign, TrendingUp, Eye, CheckCircle, Truck, ChefHat,
-  Search, Filter, Star
+  Search, Filter, Star, Settings, Upload, Camera, X, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,6 +20,8 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Footer from '@/components/Footer';
 import { formatPKR } from '@/lib/currency';
+import FoodItemModal from '@/components/FoodItemModal';
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 interface OrderItem {
   id: string;
@@ -57,12 +59,26 @@ interface Restaurant {
   name: string;
   description: string | null;
   image: string | null;
+  logo: string | null;
   category: string;
   rating: number | null;
   delivery_time: string | null;
   delivery_fee: number | null;
   tags: string[] | null;
   is_active: boolean;
+  address: string | null;
+  opening_hours: string | null;
+}
+
+interface Driver {
+  id: string;
+  user_id: string;
+  vehicle_type: string | null;
+  license_plate: string | null;
+  status: string;
+  profile?: {
+    name: string;
+  };
 }
 
 const statusConfig = {
@@ -77,30 +93,29 @@ const RestaurantDashboard = () => {
   const { user, userRole, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   
   const [menuItemDialogOpen, setMenuItemDialogOpen] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
   const [restaurantDialogOpen, setRestaurantDialogOpen] = useState(false);
-  
-  const [menuItemForm, setMenuItemForm] = useState({
-    name: '',
-    description: '',
-    price: 0,
-    image: '',
-    category: '',
-    calories: 0,
-    is_popular: false,
-    is_available: true,
-  });
+  const [restaurantSettingsOpen, setRestaurantSettingsOpen] = useState(false);
+  const [deleteRestaurantDialog, setDeleteRestaurantDialog] = useState(false);
+
+  const { uploading: coverUploading, uploadImage: uploadCover } = useImageUpload({ folder: 'restaurants/covers' });
+  const { uploading: logoUploading, uploadImage: uploadLogo } = useImageUpload({ folder: 'restaurants/logos' });
 
   const [restaurantForm, setRestaurantForm] = useState({
     name: '',
     description: '',
     image: '',
+    logo: '',
     category: '',
     delivery_time: '30-45 min',
     delivery_fee: 50,
     tags: '',
+    address: '',
+    opening_hours: '09:00 AM - 11:00 PM',
   });
 
   // Fetch owner's restaurant
@@ -113,13 +128,31 @@ const RestaurantDashboard = () => {
         .from('restaurants')
         .select('*')
         .eq('owner_id', user.id)
-        .single();
+        .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       return data;
     },
     enabled: !!user?.id && userRole === 'restaurant',
   });
+
+  // Populate form when restaurant data loads
+  useEffect(() => {
+    if (restaurant) {
+      setRestaurantForm({
+        name: restaurant.name,
+        description: restaurant.description || '',
+        image: restaurant.image || '',
+        logo: restaurant.logo || '',
+        category: restaurant.category,
+        delivery_time: restaurant.delivery_time || '30-45 min',
+        delivery_fee: restaurant.delivery_fee || 50,
+        tags: restaurant.tags?.join(', ') || '',
+        address: restaurant.address || '',
+        opening_hours: restaurant.opening_hours || '09:00 AM - 11:00 PM',
+      });
+    }
+  }, [restaurant]);
 
   // Fetch menu items for restaurant
   const { data: menuItems = [] } = useQuery({
@@ -161,17 +194,41 @@ const RestaurantDashboard = () => {
     enabled: !!restaurant?.id,
   });
 
-  // Fetch available drivers
+  // Fetch available drivers - Fixed query without join
   const { data: drivers = [] } = useQuery({
     queryKey: ['available-drivers'],
-    queryFn: async () => {
-      const { data, error } = await supabase
+    queryFn: async (): Promise<Driver[]> => {
+      // First get available drivers
+      const { data: driversData, error: driversError } = await supabase
         .from('drivers')
-        .select('*, profiles!inner(name)')
+        .select('*')
         .eq('status', 'available');
       
-      if (error) throw error;
-      return data || [];
+      if (driversError) throw driversError;
+      if (!driversData || driversData.length === 0) return [];
+
+      // Then get their profiles
+      const userIds = driversData.map(d => d.user_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, name')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.warn('Could not fetch driver profiles:', profilesError);
+        // Return drivers without profile names
+        return driversData.map(d => ({
+          ...d,
+          profile: { name: 'Driver' }
+        }));
+      }
+
+      // Merge data
+      const profileMap = new Map(profilesData?.map(p => [p.user_id, p]) || []);
+      return driversData.map(d => ({
+        ...d,
+        profile: profileMap.get(d.user_id) || { name: 'Driver' }
+      }));
     },
     enabled: !!restaurant?.id,
   });
@@ -245,6 +302,26 @@ const RestaurantDashboard = () => {
     );
   }
 
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await uploadCover(file);
+    if (url) {
+      setRestaurantForm(prev => ({ ...prev, image: url }));
+      toast.success('Cover image uploaded!');
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await uploadLogo(file);
+    if (url) {
+      setRestaurantForm(prev => ({ ...prev, logo: url }));
+      toast.success('Logo uploaded!');
+    }
+  };
+
   const handleCreateRestaurant = async () => {
     try {
       const tagsArray = restaurantForm.tags.split(',').map(t => t.trim()).filter(Boolean);
@@ -252,8 +329,16 @@ const RestaurantDashboard = () => {
       const { error } = await supabase
         .from('restaurants')
         .insert({
-          ...restaurantForm,
+          name: restaurantForm.name,
+          description: restaurantForm.description,
+          image: restaurantForm.image,
+          logo: restaurantForm.logo,
+          category: restaurantForm.category,
+          delivery_time: restaurantForm.delivery_time,
+          delivery_fee: restaurantForm.delivery_fee,
           tags: tagsArray,
+          address: restaurantForm.address,
+          opening_hours: restaurantForm.opening_hours,
           owner_id: user.id,
           is_active: true,
         });
@@ -267,14 +352,89 @@ const RestaurantDashboard = () => {
     }
   };
 
-  const handleSaveMenuItem = async () => {
+  const handleUpdateRestaurant = async () => {
+    if (!restaurant?.id) return;
+    
+    try {
+      const tagsArray = restaurantForm.tags.split(',').map(t => t.trim()).filter(Boolean);
+      
+      const { error } = await supabase
+        .from('restaurants')
+        .update({
+          name: restaurantForm.name,
+          description: restaurantForm.description,
+          image: restaurantForm.image,
+          logo: restaurantForm.logo,
+          category: restaurantForm.category,
+          delivery_time: restaurantForm.delivery_time,
+          delivery_fee: restaurantForm.delivery_fee,
+          tags: tagsArray,
+          address: restaurantForm.address,
+          opening_hours: restaurantForm.opening_hours,
+        })
+        .eq('id', restaurant.id);
+      
+      if (error) throw error;
+      toast.success('Restaurant updated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['owner-restaurant', user.id] });
+      setRestaurantSettingsOpen(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update restaurant');
+    }
+  };
+
+  const handleDeleteRestaurant = async () => {
+    if (!restaurant?.id) return;
+    
+    try {
+      // Delete menu items first
+      await supabase
+        .from('menu_items')
+        .delete()
+        .eq('restaurant_id', restaurant.id);
+      
+      // Then delete restaurant
+      const { error } = await supabase
+        .from('restaurants')
+        .delete()
+        .eq('id', restaurant.id);
+      
+      if (error) throw error;
+      
+      toast.success('Restaurant deleted permanently');
+      queryClient.invalidateQueries({ queryKey: ['owner-restaurant', user.id] });
+      setDeleteRestaurantDialog(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete restaurant');
+    }
+  };
+
+  const handleSaveMenuItem = async (formData: {
+    name: string;
+    description: string;
+    price: number;
+    category: string;
+    calories: number;
+    is_popular: boolean;
+    is_available: boolean;
+    image: string;
+  }) => {
     if (!restaurant?.id) return;
     
     try {
       if (editingMenuItem) {
         const { error } = await supabase
           .from('menu_items')
-          .update(menuItemForm)
+          .update({
+            name: formData.name,
+            description: formData.description || null,
+            price: formData.price,
+            category: formData.category,
+            calories: formData.calories || null,
+            is_popular: formData.is_popular,
+            is_available: formData.is_available,
+            image: formData.image || null,
+          })
           .eq('id', editingMenuItem.id);
         
         if (error) throw error;
@@ -283,8 +443,15 @@ const RestaurantDashboard = () => {
         const { error } = await supabase
           .from('menu_items')
           .insert({
-            ...menuItemForm,
             restaurant_id: restaurant.id,
+            name: formData.name,
+            description: formData.description || null,
+            price: formData.price,
+            category: formData.category,
+            calories: formData.calories || null,
+            is_popular: formData.is_popular,
+            is_available: formData.is_available,
+            image: formData.image || null,
           });
         
         if (error) throw error;
@@ -293,9 +460,10 @@ const RestaurantDashboard = () => {
       
       queryClient.invalidateQueries({ queryKey: ['owner-menu-items', restaurant.id] });
       setMenuItemDialogOpen(false);
-      resetMenuItemForm();
+      setEditingMenuItem(null);
     } catch (error: any) {
       toast.error(error.message || 'Failed to save menu item');
+      throw error;
     }
   };
 
@@ -361,34 +529,169 @@ const RestaurantDashboard = () => {
     }
   };
 
-  const resetMenuItemForm = () => {
-    setMenuItemForm({
-      name: '',
-      description: '',
-      price: 0,
-      image: '',
-      category: '',
-      calories: 0,
-      is_popular: false,
-      is_available: true,
-    });
-    setEditingMenuItem(null);
-  };
-
   const openEditMenuItem = (item: MenuItem) => {
     setEditingMenuItem(item);
-    setMenuItemForm({
-      name: item.name,
-      description: item.description || '',
-      price: item.price,
-      image: item.image || '',
-      category: item.category,
-      calories: item.calories || 0,
-      is_popular: item.is_popular,
-      is_available: item.is_available,
-    });
     setMenuItemDialogOpen(true);
   };
+
+  // Restaurant Form Component
+  const RestaurantFormContent = ({ isCreate = false }: { isCreate?: boolean }) => (
+    <div className="space-y-4 py-4">
+      {/* Cover Image Upload */}
+      <div className="space-y-2">
+        <Label>Cover Image</Label>
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleCoverUpload}
+          className="hidden"
+        />
+        {restaurantForm.image ? (
+          <div className="relative aspect-video rounded-xl overflow-hidden bg-muted">
+            <img src={restaurantForm.image} alt="Cover" className="w-full h-full object-cover" />
+            {coverUploading && (
+              <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="absolute top-2 right-2"
+              onClick={() => coverInputRef.current?.click()}
+            >
+              <Camera className="w-4 h-4" />
+            </Button>
+          </div>
+        ) : (
+          <div
+            onClick={() => coverInputRef.current?.click()}
+            className="aspect-video rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-primary transition-colors"
+          >
+            <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+            <span className="text-sm text-muted-foreground">Upload cover image</span>
+          </div>
+        )}
+      </div>
+
+      {/* Logo Upload */}
+      <div className="space-y-2">
+        <Label>Logo (Optional)</Label>
+        <input
+          ref={logoInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleLogoUpload}
+          className="hidden"
+        />
+        <div className="flex items-center gap-4">
+          {restaurantForm.logo ? (
+            <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-muted">
+              <img src={restaurantForm.logo} alt="Logo" className="w-full h-full object-cover" />
+              {logoUploading && (
+                <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              onClick={() => logoInputRef.current?.click()}
+              className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary transition-colors"
+            >
+              <Upload className="w-6 h-6 text-muted-foreground" />
+            </div>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => logoInputRef.current?.click()}
+          >
+            {restaurantForm.logo ? 'Change Logo' : 'Upload Logo'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Restaurant Name *</Label>
+        <Input
+          value={restaurantForm.name}
+          onChange={(e) => setRestaurantForm({ ...restaurantForm, name: e.target.value })}
+          placeholder="Enter restaurant name"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Description</Label>
+        <Textarea
+          value={restaurantForm.description}
+          onChange={(e) => setRestaurantForm({ ...restaurantForm, description: e.target.value })}
+          placeholder="Brief description of your restaurant"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Address</Label>
+        <Input
+          value={restaurantForm.address}
+          onChange={(e) => setRestaurantForm({ ...restaurantForm, address: e.target.value })}
+          placeholder="Full address"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Category *</Label>
+          <Input
+            value={restaurantForm.category}
+            onChange={(e) => setRestaurantForm({ ...restaurantForm, category: e.target.value })}
+            placeholder="Pakistani, Chinese..."
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Delivery Time</Label>
+          <Input
+            value={restaurantForm.delivery_time}
+            onChange={(e) => setRestaurantForm({ ...restaurantForm, delivery_time: e.target.value })}
+            placeholder="30-45 min"
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Delivery Fee (Rs.)</Label>
+          <Input
+            type="number"
+            value={restaurantForm.delivery_fee}
+            onChange={(e) => setRestaurantForm({ ...restaurantForm, delivery_fee: Number(e.target.value) })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Opening Hours</Label>
+          <Input
+            value={restaurantForm.opening_hours}
+            onChange={(e) => setRestaurantForm({ ...restaurantForm, opening_hours: e.target.value })}
+            placeholder="09:00 AM - 11:00 PM"
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Tags (comma-separated)</Label>
+        <Input
+          value={restaurantForm.tags}
+          onChange={(e) => setRestaurantForm({ ...restaurantForm, tags: e.target.value })}
+          placeholder="Halal, Spicy, Traditional"
+        />
+      </div>
+      <Button 
+        onClick={isCreate ? handleCreateRestaurant : handleUpdateRestaurant} 
+        className="w-full"
+        disabled={!restaurantForm.name || !restaurantForm.category || coverUploading || logoUploading}
+      >
+        {isCreate ? 'Create Restaurant' : 'Save Changes'}
+      </Button>
+    </div>
+  );
 
   // If no restaurant, show create restaurant form
   if (!restaurantLoading && !restaurant) {
@@ -417,73 +720,7 @@ const RestaurantDashboard = () => {
                 <DialogHeader>
                   <DialogTitle>Create Your Restaurant</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Restaurant Name *</Label>
-                    <Input
-                      value={restaurantForm.name}
-                      onChange={(e) => setRestaurantForm({ ...restaurantForm, name: e.target.value })}
-                      placeholder="Enter restaurant name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Textarea
-                      value={restaurantForm.description}
-                      onChange={(e) => setRestaurantForm({ ...restaurantForm, description: e.target.value })}
-                      placeholder="Brief description of your restaurant"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Cover Image URL</Label>
-                    <Input
-                      value={restaurantForm.image}
-                      onChange={(e) => setRestaurantForm({ ...restaurantForm, image: e.target.value })}
-                      placeholder="https://..."
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Category *</Label>
-                      <Input
-                        value={restaurantForm.category}
-                        onChange={(e) => setRestaurantForm({ ...restaurantForm, category: e.target.value })}
-                        placeholder="Pakistani, Chinese..."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Delivery Time</Label>
-                      <Input
-                        value={restaurantForm.delivery_time}
-                        onChange={(e) => setRestaurantForm({ ...restaurantForm, delivery_time: e.target.value })}
-                        placeholder="30-45 min"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Delivery Fee (Rs.)</Label>
-                    <Input
-                      type="number"
-                      value={restaurantForm.delivery_fee}
-                      onChange={(e) => setRestaurantForm({ ...restaurantForm, delivery_fee: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tags (comma-separated)</Label>
-                    <Input
-                      value={restaurantForm.tags}
-                      onChange={(e) => setRestaurantForm({ ...restaurantForm, tags: e.target.value })}
-                      placeholder="Halal, Spicy, Traditional"
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleCreateRestaurant} 
-                    className="w-full"
-                    disabled={!restaurantForm.name || !restaurantForm.category}
-                  >
-                    Create Restaurant
-                  </Button>
-                </div>
+                <RestaurantFormContent isCreate />
               </DialogContent>
             </Dialog>
           </motion.div>
@@ -503,20 +740,79 @@ const RestaurantDashboard = () => {
       <section className="py-6 bg-gradient-warm border-b border-border/50">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="flex items-center gap-3 mb-2">
-              <Store className="w-8 h-8 text-primary" />
-              <h1 className="text-2xl font-bold text-foreground">{restaurant?.name}</h1>
-              {restaurant?.rating && (
-                <div className="flex items-center gap-1 bg-primary/10 px-2 py-1 rounded-full">
-                  <Star className="w-4 h-4 text-primary fill-primary" />
-                  <span className="text-sm font-medium">{restaurant.rating}</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {restaurant?.logo ? (
+                  <img src={restaurant.logo} alt="Logo" className="w-12 h-12 rounded-xl object-cover" />
+                ) : (
+                  <Store className="w-8 h-8 text-primary" />
+                )}
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">{restaurant?.name}</h1>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">{restaurant?.category}</span>
+                    {restaurant?.rating && (
+                      <div className="flex items-center gap-1 text-sm">
+                        <Star className="w-3 h-3 text-primary fill-primary" />
+                        <span>{restaurant.rating}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRestaurantSettingsOpen(true)}
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </Button>
             </div>
-            <p className="text-muted-foreground">{restaurant?.category}</p>
           </motion.div>
         </div>
       </section>
+
+      {/* Restaurant Settings Dialog */}
+      <Dialog open={restaurantSettingsOpen} onOpenChange={setRestaurantSettingsOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Restaurant Settings</DialogTitle>
+          </DialogHeader>
+          <RestaurantFormContent />
+          <div className="pt-4 border-t border-border">
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={() => setDeleteRestaurantDialog(true)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Restaurant
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteRestaurantDialog} onOpenChange={setDeleteRestaurantDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete Restaurant</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete your restaurant,
+              all menu items, and remove it from customer view.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteRestaurantDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteRestaurant}>
+              Yes, Delete Permanently
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Analytics Cards */}
       <section className="py-6 border-b border-border/50">
@@ -676,9 +972,9 @@ const RestaurantDashboard = () => {
                             defaultValue=""
                           >
                             <option value="">Assign a rider...</option>
-                            {drivers.map((driver: any) => (
+                            {drivers.map((driver) => (
                               <option key={driver.id} value={driver.id}>
-                                {driver.profiles?.name || 'Unknown'} - {driver.vehicle_type}
+                                {driver.profile?.name || 'Driver'} - {driver.vehicle_type || 'Vehicle'}
                               </option>
                             ))}
                           </select>
@@ -739,96 +1035,34 @@ const RestaurantDashboard = () => {
             <TabsContent value="menu" className="space-y-6">
               <div className="flex justify-between items-center">
                 <h3 className="font-semibold text-foreground">Menu Items</h3>
-                <Dialog open={menuItemDialogOpen} onOpenChange={(open) => {
-                  setMenuItemDialogOpen(open);
-                  if (!open) resetMenuItemForm();
+                <Button onClick={() => {
+                  setEditingMenuItem(null);
+                  setMenuItemDialogOpen(true);
                 }}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Item
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>{editingMenuItem ? 'Edit Menu Item' : 'Add Menu Item'}</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Name *</Label>
-                        <Input
-                          value={menuItemForm.name}
-                          onChange={(e) => setMenuItemForm({ ...menuItemForm, name: e.target.value })}
-                          placeholder="Item name"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Description</Label>
-                        <Textarea
-                          value={menuItemForm.description}
-                          onChange={(e) => setMenuItemForm({ ...menuItemForm, description: e.target.value })}
-                          placeholder="Brief description"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Price (Rs.) *</Label>
-                          <Input
-                            type="number"
-                            value={menuItemForm.price}
-                            onChange={(e) => setMenuItemForm({ ...menuItemForm, price: Number(e.target.value) })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Calories</Label>
-                          <Input
-                            type="number"
-                            value={menuItemForm.calories}
-                            onChange={(e) => setMenuItemForm({ ...menuItemForm, calories: Number(e.target.value) })}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Category *</Label>
-                        <Input
-                          value={menuItemForm.category}
-                          onChange={(e) => setMenuItemForm({ ...menuItemForm, category: e.target.value })}
-                          placeholder="Fast Food, BBQ, Chinese..."
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Image URL</Label>
-                        <Input
-                          value={menuItemForm.image}
-                          onChange={(e) => setMenuItemForm({ ...menuItemForm, image: e.target.value })}
-                          placeholder="https://..."
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label>Mark as Popular</Label>
-                        <Switch
-                          checked={menuItemForm.is_popular}
-                          onCheckedChange={(checked) => setMenuItemForm({ ...menuItemForm, is_popular: checked })}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label>Available</Label>
-                        <Switch
-                          checked={menuItemForm.is_available}
-                          onCheckedChange={(checked) => setMenuItemForm({ ...menuItemForm, is_available: checked })}
-                        />
-                      </div>
-                      <Button 
-                        onClick={handleSaveMenuItem} 
-                        className="w-full"
-                        disabled={!menuItemForm.name || !menuItemForm.price || !menuItemForm.category}
-                      >
-                        {editingMenuItem ? 'Update Item' : 'Add Item'}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Item
+                </Button>
               </div>
+
+              <FoodItemModal
+                open={menuItemDialogOpen}
+                onOpenChange={(open) => {
+                  setMenuItemDialogOpen(open);
+                  if (!open) setEditingMenuItem(null);
+                }}
+                onSave={handleSaveMenuItem}
+                initialData={editingMenuItem ? {
+                  name: editingMenuItem.name,
+                  description: editingMenuItem.description || '',
+                  price: editingMenuItem.price,
+                  category: editingMenuItem.category,
+                  calories: editingMenuItem.calories || 0,
+                  is_popular: editingMenuItem.is_popular,
+                  is_available: editingMenuItem.is_available,
+                  image: editingMenuItem.image || '',
+                } : undefined}
+                isEditing={!!editingMenuItem}
+              />
 
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {menuItems.map(item => (
@@ -856,6 +1090,11 @@ const RestaurantDashboard = () => {
                       <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{item.description}</p>
                     )}
                     <div className="flex items-center gap-2 mb-3">
+                      {item.calories && (
+                        <span className="text-xs bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded-full">
+                          {item.calories} cal
+                        </span>
+                      )}
                       {item.is_popular && (
                         <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Popular</span>
                       )}
@@ -868,29 +1107,48 @@ const RestaurantDashboard = () => {
                       </span>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => openEditMenuItem(item)}>
-                        <Edit2 className="w-3 h-3 mr-1" />
-                        Edit
-                      </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
                         size="sm"
+                        variant="outline"
+                        className="flex-1"
                         onClick={() => handleToggleAvailability(item)}
                       >
                         {item.is_available ? 'Mark Unavailable' : 'Mark Available'}
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="text-destructive"
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openEditMenuItem(item)}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
                         onClick={() => handleDeleteMenuItem(item.id)}
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </motion.div>
                 ))}
               </div>
+
+              {menuItems.length === 0 && (
+                <div className="text-center py-12">
+                  <UtensilsCrossed className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="font-semibold text-foreground mb-2">No menu items yet</h3>
+                  <p className="text-muted-foreground mb-4">Add your first dish to get started</p>
+                  <Button onClick={() => {
+                    setEditingMenuItem(null);
+                    setMenuItemDialogOpen(true);
+                  }}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add First Item
+                  </Button>
+                </div>
+              )}
             </TabsContent>
 
             {/* Analytics Tab */}
@@ -902,17 +1160,17 @@ const RestaurantDashboard = () => {
                   </CardHeader>
                   <CardContent>
                     {popularItems.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No popular items marked yet</p>
+                      <p className="text-muted-foreground text-sm">No popular items marked yet</p>
                     ) : (
                       <div className="space-y-3">
                         {popularItems.map((item, i) => (
-                          <div key={item.id} className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <span className="text-lg font-bold text-muted-foreground">#{i + 1}</span>
-                              <div>
-                                <p className="font-medium text-foreground">{item.name}</p>
-                                <p className="text-xs text-muted-foreground">{item.category}</p>
-                              </div>
+                          <div key={item.id} className="flex items-center gap-3">
+                            <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-sm flex items-center justify-center">
+                              {i + 1}
+                            </span>
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">{item.name}</p>
+                              <p className="text-xs text-muted-foreground">{item.category}</p>
                             </div>
                             <span className="font-bold text-primary">{formatPKR(item.price)}</span>
                           </div>
@@ -928,26 +1186,26 @@ const RestaurantDashboard = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Total Orders</span>
-                        <span className="font-bold">{orders.length}</span>
+                        <span className="font-bold text-foreground">{orders.length}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Delivered</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Completed Orders</span>
                         <span className="font-bold text-emerald-500">
                           {orders.filter(o => o.status === 'delivered').length}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Cancelled</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Cancelled Orders</span>
                         <span className="font-bold text-destructive">
                           {orders.filter(o => o.status === 'cancelled').length}
                         </span>
                       </div>
                       <div className="pt-4 border-t border-border">
-                        <div className="flex justify-between">
-                          <span className="font-medium text-foreground">Total Revenue</span>
-                          <span className="font-bold text-primary text-lg">{formatPKR(totalRevenue)}</span>
+                        <div className="flex justify-between items-center">
+                          <span className="text-foreground font-medium">Total Revenue</span>
+                          <span className="text-xl font-bold text-primary">{formatPKR(totalRevenue)}</span>
                         </div>
                       </div>
                     </div>
