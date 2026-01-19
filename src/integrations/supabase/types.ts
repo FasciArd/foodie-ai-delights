@@ -380,8 +380,10 @@ export type Database = {
           image: string | null
           is_active: boolean | null
           latitude: number | null
+          logo: string | null
           longitude: number | null
           name: string
+          opening_hours: string | null
           owner_id: string | null
           rating: number | null
           tags: string[] | null
@@ -398,8 +400,10 @@ export type Database = {
           image?: string | null
           is_active?: boolean | null
           latitude?: number | null
+          logo?: string | null
           longitude?: number | null
           name: string
+          opening_hours?: string | null
           owner_id?: string | null
           rating?: number | null
           tags?: string[] | null
@@ -416,8 +420,10 @@ export type Database = {
           image?: string | null
           is_active?: boolean | null
           latitude?: number | null
+          logo?: string | null
           longitude?: number | null
           name?: string
+          opening_hours?: string | null
           owner_id?: string | null
           rating?: number | null
           tags?: string[] | null
