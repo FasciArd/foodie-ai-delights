@@ -1,17 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, MapPin, Camera, Save, ArrowLeft, Store, Bike, ChefHat, ArrowRight } from 'lucide-react';
+import { 
+  User, Mail, Phone, MapPin, Camera, Save, ArrowLeft, 
+  Store, Bike, ChefHat, ArrowRight, Volume2, VolumeX, 
+  RefreshCw, Lock, Shield
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPKR } from '@/lib/currency';
-import { getRoleDashboardPath } from '@/components/RoleBasedRedirect';
-import ImageEnhancer from '@/components/ImageEnhancer';
+import { useAvatarUpload } from '@/hooks/useAvatarUpload';
+import { useSoundNotifications } from '@/hooks/useSoundNotifications';
+import { RoleSwitcher } from '@/components/RoleSwitcher';
 
 interface ProfileData {
   name: string;
@@ -27,8 +33,13 @@ const Profile = () => {
   const { user, userRole, loading: authLoading, roleLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const { uploading: avatarUploading, uploadAvatar } = useAvatarUpload();
+  const { soundEnabled, toggleSound, playSound } = useSoundNotifications();
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [roleSwitcherOpen, setRoleSwitcherOpen] = useState(false);
   const [profile, setProfile] = useState<ProfileData>({
     name: '',
     email: '',
@@ -66,9 +77,9 @@ const Profile = () => {
           email: data.email || user.email || '',
           phone: data.phone || '',
           address: data.address || '',
-          bio: (data as any).bio || '',
+          bio: data.bio || '',
           avatar_url: data.avatar_url || '',
-          wallet_balance: (data as any).wallet_balance || 0,
+          wallet_balance: data.wallet_balance || 0,
         });
       }
     } catch (error) {
@@ -92,7 +103,7 @@ const Profile = () => {
           bio: profile.bio,
           avatar_url: profile.avatar_url,
           updated_at: new Date().toISOString(),
-        } as any)
+        })
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -112,6 +123,27 @@ const Profile = () => {
     }
   };
 
+  const handleAvatarSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const url = await uploadAvatar(file, user.id);
+    if (url) {
+      setProfile(prev => ({ ...prev, avatar_url: url }));
+      
+      // Auto-save avatar
+      await supabase
+        .from('profiles')
+        .update({ avatar_url: url, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
+      
+      toast({
+        title: 'Avatar Updated',
+        description: 'Your profile picture has been updated.',
+      });
+    }
+  };
+
   const getDashboardInfo = () => {
     switch (userRole) {
       case 'restaurant':
@@ -122,6 +154,15 @@ const Profile = () => {
         return { path: '/admin', label: 'Admin Dashboard', icon: <ChefHat className="w-5 h-5" /> };
       default:
         return null;
+    }
+  };
+
+  const getRoleLabel = () => {
+    switch (userRole) {
+      case 'restaurant': return 'Restaurant Owner';
+      case 'driver': return 'Delivery Rider';
+      case 'admin': return 'Administrator';
+      default: return 'Customer';
     }
   };
 
@@ -153,10 +194,18 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* Avatar Section */}
+          {/* Avatar Section with Upload */}
           <div className="bg-card rounded-2xl p-6 mb-6 border border-border">
             <div className="flex items-center gap-6">
               <div className="relative">
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleAvatarSelect}
+                  className="hidden"
+                />
                 <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
                   {profile.avatar_url ? (
                     <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
@@ -164,19 +213,49 @@ const Profile = () => {
                     <User className="w-12 h-12 text-primary" />
                   )}
                 </div>
-                <button className="absolute bottom-0 right-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg">
-                  <Camera className="w-4 h-4" />
+                <button 
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {avatarUploading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
                 </button>
               </div>
-              <div>
+              <div className="flex-1">
                 <h2 className="text-xl font-bold text-foreground">{profile.name || 'User'}</h2>
-                <p className="text-muted-foreground capitalize">{userRole || 'Customer'}</p>
+                <p className="text-muted-foreground">{getRoleLabel()}</p>
                 {userRole === 'customer' && (
                   <p className="text-primary font-medium mt-1">
                     Wallet: {formatPKR(profile.wallet_balance)}
                   </p>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Role Switching Section */}
+          <div className="bg-card rounded-2xl p-4 mb-6 border border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Shield className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Active Role</p>
+                  <p className="text-sm text-muted-foreground">{getRoleLabel()}</p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setRoleSwitcherOpen(true)}
+              >
+                Switch Role
+              </Button>
             </div>
           </div>
 
@@ -197,6 +276,36 @@ const Profile = () => {
             </div>
           )}
 
+          {/* Sound Notifications Toggle */}
+          <div className="bg-card rounded-2xl p-4 mb-6 border border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-muted">
+                  {soundEnabled ? (
+                    <Volume2 className="w-5 h-5 text-foreground" />
+                  ) : (
+                    <VolumeX className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">Notification Sounds</p>
+                  <p className="text-sm text-muted-foreground">
+                    {soundEnabled ? 'Enabled' : 'Disabled'}
+                  </p>
+                </div>
+              </div>
+              <Switch 
+                checked={soundEnabled} 
+                onCheckedChange={() => {
+                  toggleSound();
+                  if (!soundEnabled) {
+                    playSound('notification');
+                  }
+                }}
+              />
+            </div>
+          </div>
+
           {/* Switch Role Banner - Only for customers */}
           {userRole === 'customer' && (
             <div className="bg-gradient-to-r from-primary/10 to-secondary/50 rounded-2xl p-6 mb-6 border border-primary/20">
@@ -205,7 +314,7 @@ const Profile = () => {
                 Register as a Restaurant Owner or Delivery Partner to start earning
               </p>
               <Button variant="outline" size="sm" onClick={() => navigate('/role-registration')}>
-                Change Role
+                Complete Registration
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
@@ -238,7 +347,10 @@ const Profile = () => {
                   className="pl-10 bg-muted"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Lock className="w-3 h-3" />
+                Email cannot be changed
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -299,15 +411,11 @@ const Profile = () => {
               </Button>
             </div>
           )}
-
-          {/* Image Enhancer for Restaurant Owners */}
-          {(userRole === 'restaurant' || userRole === 'admin') && (
-            <div className="mt-6">
-              <ImageEnhancer onEnhanced={(url) => setProfile({ ...profile, avatar_url: url })} />
-            </div>
-          )}
         </motion.div>
       </div>
+
+      {/* Role Switcher Dialog */}
+      <RoleSwitcher open={roleSwitcherOpen} onOpenChange={setRoleSwitcherOpen} />
     </div>
   );
 };

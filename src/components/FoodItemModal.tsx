@@ -387,13 +387,20 @@ const FoodItemModal = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="food-description">Description</Label>
             <Textarea
-              id="description"
+              id="food-description"
+              name="food-description"
+              autoComplete="off"
               value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              onChange={(e) => {
+                e.stopPropagation();
+                setFormData(prev => ({ ...prev, description: e.target.value }));
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
               placeholder="Describe ingredients, taste, serving size..."
               rows={3}
+              className="resize-none"
             />
           </div>
 
