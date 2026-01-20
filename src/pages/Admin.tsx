@@ -815,7 +815,7 @@ const Admin = () => {
                             alt={restaurant.name}
                             className="w-full h-32 object-cover rounded-lg mb-3"
                           />
-                          {(restaurant as any).is_active === false && (
+                          {restaurant.is_active === false && (
                             <div className="absolute top-2 right-2 bg-destructive text-destructive-foreground text-xs px-2 py-1 rounded">
                               Suspended
                             </div>
@@ -831,9 +831,9 @@ const Admin = () => {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => handleToggleRestaurantActive(restaurant.id, (restaurant as any).is_active !== false)}
+                            onClick={() => handleToggleRestaurantActive(restaurant.id, restaurant.is_active !== false)}
                           >
-                            {(restaurant as any).is_active !== false ? (
+                            {restaurant.is_active !== false ? (
                               <>
                                 <Ban className="w-3 h-3 mr-1" />
                                 Suspend
