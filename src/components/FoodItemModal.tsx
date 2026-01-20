@@ -367,20 +367,32 @@ const FoodItemModal = ({
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="food-name">Name *</Label>
               <Input
-                id="name"
+                id="food-name"
+                name="food-name"
+                autoComplete="off"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  setFormData(prev => ({ ...prev, name: e.target.value }));
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
                 placeholder="e.g., Chicken Biryani"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="category">Category *</Label>
+              <Label htmlFor="food-category">Category *</Label>
               <Input
-                id="category"
+                id="food-category"
+                name="food-category"
+                autoComplete="off"
                 value={formData.category}
-                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  setFormData(prev => ({ ...prev, category: e.target.value }));
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
                 placeholder="e.g., Rice, BBQ, Fast Food"
               />
             </div>
@@ -405,13 +417,18 @@ const FoodItemModal = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="price">Price (Rs.) *</Label>
+            <Label htmlFor="food-price">Price (Rs.) *</Label>
             <Input
-              id="price"
+              id="food-price"
+              name="food-price"
               type="number"
               min="0"
               value={formData.price || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) || 0 }))}
+              onChange={(e) => {
+                e.stopPropagation();
+                setFormData(prev => ({ ...prev, price: Number(e.target.value) || 0 }));
+              }}
+              onKeyDown={(e) => e.stopPropagation()}
               placeholder="e.g., 450"
             />
           </div>

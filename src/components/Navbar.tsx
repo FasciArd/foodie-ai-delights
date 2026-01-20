@@ -178,10 +178,7 @@ const Navbar = () => {
                     </>
                   )}
                   
-                  <DropdownMenuItem onClick={() => navigate('/image-enhancer')}>
-                    <ImageIcon className="w-4 h-4 mr-2" />
-                    Image Enhancer
-                  </DropdownMenuItem>
+                  {/* Image Enhancer moved to restaurant dashboard food upload only */}
                   
                   {userRole === 'customer' && (
                     <DropdownMenuItem onClick={() => navigate('/pro-membership')}>

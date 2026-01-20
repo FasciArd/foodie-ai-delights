@@ -95,16 +95,26 @@ const Footer = () => {
             <h4 className="font-bold text-foreground mb-4">Contact Us</h4>
             <ul className="space-y-3">
               <li className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="w-4 h-4 text-primary" />
+                <MapPin className="w-4 h-4 text-primary shrink-0" />
                 <span>123 Food Street, Culinary City</span>
               </li>
-              <li className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="w-4 h-4 text-primary" />
-                <span>+1 (555) 123-4567</span>
+              <li className="flex items-center gap-2 text-sm">
+                <Phone className="w-4 h-4 text-primary shrink-0" />
+                <a 
+                  href="tel:+15551234567" 
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  +1 (555) 123-4567
+                </a>
               </li>
-              <li className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail className="w-4 h-4 text-primary" />
-                <span>hello@foodiehub.com</span>
+              <li className="flex items-center gap-2 text-sm">
+                <Mail className="w-4 h-4 text-primary shrink-0" />
+                <a 
+                  href="mailto:hello@foodiehub.com" 
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  hello@foodiehub.com
+                </a>
               </li>
             </ul>
           </div>

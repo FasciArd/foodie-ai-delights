@@ -616,70 +616,125 @@ const RestaurantDashboard = () => {
       </div>
 
       <div className="space-y-2">
-        <Label>Restaurant Name *</Label>
+        <Label htmlFor="restaurant-name">Restaurant Name *</Label>
         <Input
+          id="restaurant-name"
+          name="restaurant-name"
+          autoComplete="off"
           value={restaurantForm.name}
-          onChange={(e) => setRestaurantForm({ ...restaurantForm, name: e.target.value })}
+          onChange={(e) => {
+            e.stopPropagation();
+            setRestaurantForm(prev => ({ ...prev, name: e.target.value }));
+          }}
+          onKeyDown={(e) => e.stopPropagation()}
           placeholder="Enter restaurant name"
         />
       </div>
       <div className="space-y-2">
-        <Label>Description</Label>
+        <Label htmlFor="restaurant-description">Description</Label>
         <Textarea
+          id="restaurant-description"
+          name="restaurant-description"
+          autoComplete="off"
           value={restaurantForm.description}
-          onChange={(e) => setRestaurantForm({ ...restaurantForm, description: e.target.value })}
+          onChange={(e) => {
+            e.stopPropagation();
+            setRestaurantForm(prev => ({ ...prev, description: e.target.value }));
+          }}
+          onKeyDown={(e) => e.stopPropagation()}
           placeholder="Brief description of your restaurant"
         />
       </div>
       <div className="space-y-2">
-        <Label>Address</Label>
+        <Label htmlFor="restaurant-address">Address</Label>
         <Input
+          id="restaurant-address"
+          name="restaurant-address"
+          autoComplete="off"
           value={restaurantForm.address}
-          onChange={(e) => setRestaurantForm({ ...restaurantForm, address: e.target.value })}
+          onChange={(e) => {
+            e.stopPropagation();
+            setRestaurantForm(prev => ({ ...prev, address: e.target.value }));
+          }}
+          onKeyDown={(e) => e.stopPropagation()}
           placeholder="Full address"
         />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Category *</Label>
+          <Label htmlFor="restaurant-category">Category *</Label>
           <Input
+            id="restaurant-category"
+            name="restaurant-category"
+            autoComplete="off"
             value={restaurantForm.category}
-            onChange={(e) => setRestaurantForm({ ...restaurantForm, category: e.target.value })}
+            onChange={(e) => {
+              e.stopPropagation();
+              setRestaurantForm(prev => ({ ...prev, category: e.target.value }));
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
             placeholder="Pakistani, Chinese..."
           />
         </div>
         <div className="space-y-2">
-          <Label>Delivery Time</Label>
+          <Label htmlFor="delivery-time">Delivery Time</Label>
           <Input
+            id="delivery-time"
+            name="delivery-time"
+            autoComplete="off"
             value={restaurantForm.delivery_time}
-            onChange={(e) => setRestaurantForm({ ...restaurantForm, delivery_time: e.target.value })}
+            onChange={(e) => {
+              e.stopPropagation();
+              setRestaurantForm(prev => ({ ...prev, delivery_time: e.target.value }));
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
             placeholder="30-45 min"
           />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Delivery Fee (Rs.)</Label>
+          <Label htmlFor="delivery-fee">Delivery Fee (Rs.)</Label>
           <Input
+            id="delivery-fee"
+            name="delivery-fee"
             type="number"
             value={restaurantForm.delivery_fee}
-            onChange={(e) => setRestaurantForm({ ...restaurantForm, delivery_fee: Number(e.target.value) })}
+            onChange={(e) => {
+              e.stopPropagation();
+              setRestaurantForm(prev => ({ ...prev, delivery_fee: Number(e.target.value) }));
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
           />
         </div>
         <div className="space-y-2">
-          <Label>Opening Hours</Label>
+          <Label htmlFor="opening-hours">Opening Hours</Label>
           <Input
+            id="opening-hours"
+            name="opening-hours"
+            autoComplete="off"
             value={restaurantForm.opening_hours}
-            onChange={(e) => setRestaurantForm({ ...restaurantForm, opening_hours: e.target.value })}
+            onChange={(e) => {
+              e.stopPropagation();
+              setRestaurantForm(prev => ({ ...prev, opening_hours: e.target.value }));
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
             placeholder="09:00 AM - 11:00 PM"
           />
         </div>
       </div>
       <div className="space-y-2">
-        <Label>Tags (comma-separated)</Label>
+        <Label htmlFor="restaurant-tags">Tags (comma-separated)</Label>
         <Input
+          id="restaurant-tags"
+          name="restaurant-tags"
+          autoComplete="off"
           value={restaurantForm.tags}
-          onChange={(e) => setRestaurantForm({ ...restaurantForm, tags: e.target.value })}
+          onChange={(e) => {
+            e.stopPropagation();
+            setRestaurantForm(prev => ({ ...prev, tags: e.target.value }));
+          }}
+          onKeyDown={(e) => e.stopPropagation()}
           placeholder="Halal, Spicy, Traditional"
         />
       </div>
