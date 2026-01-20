@@ -28,6 +28,18 @@ import ImageEnhancer from "./pages/ImageEnhancer";
 import RestaurantDashboard from "./pages/RestaurantDashboard";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
 import NotFound from "./pages/NotFound";
+import About from "./pages/About";
+import Careers from "./pages/Careers";
+import Blog from "./pages/Blog";
+import Press from "./pages/Press";
+import Help from "./pages/Help";
+import Safety from "./pages/Safety";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Cookies from "./pages/Cookies";
+import Partner from "./pages/Partner";
+import Driver from "./pages/Driver";
+import Affiliate from "./pages/Affiliate";
 
 const queryClient = new QueryClient();
 
@@ -48,7 +60,22 @@ const App = () => (
               <Route path="/restaurant/:id" element={<RestaurantDetail />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/homechefs" element={<HomeChefs />} />
+              <Route path="/homechef/:id" element={<RestaurantDetail />} />
               <Route path="/pro-membership" element={<ProMembership />} />
+              
+              {/* Footer pages */}
+              <Route path="/about" element={<About />} />
+              <Route path="/careers" element={<Careers />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/press" element={<Press />} />
+              <Route path="/help" element={<Help />} />
+              <Route path="/safety" element={<Safety />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/cookies" element={<Cookies />} />
+              <Route path="/partner" element={<Partner />} />
+              <Route path="/driver" element={<Driver />} />
+              <Route path="/affiliate" element={<Affiliate />} />
               
               {/* Customer-only routes */}
               <Route path="/cart" element={
