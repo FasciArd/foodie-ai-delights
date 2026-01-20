@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CreditCard, Smartphone, Banknote, Truck, MapPin, Phone, User } from 'lucide-react';
+import { ArrowLeft, CreditCard, Smartphone, Banknote, Truck, MapPin, Phone, User, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,17 +11,19 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { Database } from '@/integrations/supabase/types';
+import { formatPKR } from '@/lib/currency';
 
-type PaymentMethod = Database['public']['Enums']['payment_method'];
+// Extended payment method type to include wallet
+type PaymentMethodType = 'cod' | 'easypaisa' | 'jazzcash' | 'stripe' | 'wallet';
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { items, totalPrice, totalCalories, clearCart } = useCart();
   const { user } = useAuth();
   
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('cod');
   const [loading, setLoading] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -32,6 +34,24 @@ const Checkout = () => {
   const deliveryFee = 100;
   const serviceFee = 50;
   const finalTotal = totalPrice + deliveryFee + serviceFee;
+  const hasEnoughBalance = walletBalance >= finalTotal;
+
+  // Fetch wallet balance
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      if (!user?.id) return;
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('wallet_balance')
+        .eq('user_id', user.id)
+        .single();
+      
+      setWalletBalance(data?.wallet_balance || 0);
+    };
+    
+    fetchWalletBalance();
+  }, [user?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +64,12 @@ const Checkout = () => {
 
     if (items.length === 0) {
       toast.error('Your cart is empty');
+      return;
+    }
+
+    // Check wallet balance if paying with wallet
+    if (paymentMethod === 'wallet' && !hasEnoughBalance) {
+      toast.error('Insufficient wallet balance');
       return;
     }
 
@@ -79,14 +105,37 @@ const Checkout = () => {
 
       if (orderError) throw orderError;
 
+      // Handle wallet payment - deduct from balance
+      if (paymentMethod === 'wallet') {
+        const newBalance = walletBalance - finalTotal;
+        
+        // Update wallet balance
+        const { error: walletError } = await supabase
+          .from('profiles')
+          .update({ wallet_balance: newBalance })
+          .eq('user_id', user.id);
+        
+        if (walletError) throw walletError;
+
+        // Create wallet transaction record
+        await supabase
+          .from('wallet_transactions')
+          .insert({
+            user_id: user.id,
+            type: 'debit',
+            amount: finalTotal,
+            description: `Order #${order.id.slice(0, 8).toUpperCase()}`,
+          });
+      }
+
       // Create payment record
       const { error: paymentError } = await supabase
         .from('payments')
         .insert({
           order_id: order.id,
           amount: finalTotal,
-          method: paymentMethod,
-          status: paymentMethod === 'cod' ? 'pending' : 'pending',
+          method: paymentMethod === 'wallet' ? 'cod' : paymentMethod, // Map wallet to cod for DB enum
+          status: paymentMethod === 'wallet' ? 'completed' : 'pending',
         });
 
       if (paymentError) throw paymentError;
@@ -230,9 +279,36 @@ const Checkout = () => {
                   
                   <RadioGroup
                     value={paymentMethod}
-                    onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+                    onValueChange={(value) => setPaymentMethod(value as PaymentMethodType)}
                     className="space-y-3"
                   >
+                    {/* My Wallet - First Option */}
+                    <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
+                      paymentMethod === 'wallet' 
+                        ? 'border-primary bg-primary/5' 
+                        : !hasEnoughBalance 
+                          ? 'border-border opacity-60 cursor-not-allowed' 
+                          : 'border-border hover:border-primary/50'
+                    }`}>
+                      <RadioGroupItem value="wallet" id="wallet" disabled={!hasEnoughBalance} />
+                      <div className="w-6 h-6 bg-primary rounded-md flex items-center justify-center">
+                        <Wallet className="w-4 h-4 text-primary-foreground" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium">My Wallet (FoodiePay)</p>
+                          <span className={`text-sm font-semibold ${hasEnoughBalance ? 'text-green-600' : 'text-destructive'}`}>
+                            {formatPKR(walletBalance)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {hasEnoughBalance 
+                            ? 'Pay instantly with your wallet balance' 
+                            : 'Insufficient balance - Add money to use'}
+                        </p>
+                      </div>
+                    </label>
+                    
                     <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
                       paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
                     }`}>
@@ -318,6 +394,12 @@ const Checkout = () => {
                       <span>Service Fee</span>
                       <span>Rs. {serviceFee}</span>
                     </div>
+                    {paymentMethod === 'wallet' && hasEnoughBalance && (
+                      <div className="flex justify-between text-green-600 font-medium">
+                        <span>Wallet Payment</span>
+                        <span>-{formatPKR(finalTotal)}</span>
+                      </div>
+                    )}
                     <div className="border-t border-border pt-3">
                       <div className="flex justify-between font-bold text-lg">
                         <span className="text-foreground">Total</span>
@@ -330,7 +412,7 @@ const Checkout = () => {
                     type="submit"
                     variant="hero"
                     className="w-full mt-6"
-                    disabled={loading}
+                    disabled={loading || (paymentMethod === 'wallet' && !hasEnoughBalance)}
                   >
                     {loading ? 'Placing Order...' : 'Place Order'}
                   </Button>
