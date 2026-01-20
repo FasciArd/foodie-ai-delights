@@ -1,30 +1,172 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, CreditCard, Smartphone, Gift } from 'lucide-react';
+import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, CreditCard, Smartphone, Gift, Loader2, Tag, Percent, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { formatPKR } from '@/lib/currency';
+import { toast } from 'sonner';
 import Footer from '@/components/Footer';
 
-const transactions = [
-  { id: '1', type: 'credit', amount: 500, description: 'Added via JazzCash', date: '2024-01-15', time: '14:30' },
-  { id: '2', type: 'debit', amount: 350, description: 'Order #ORD-001', date: '2024-01-14', time: '19:45' },
-  { id: '3', type: 'credit', amount: 100, description: 'Refund - Order cancelled', date: '2024-01-13', time: '11:20' },
-  { id: '4', type: 'credit', amount: 200, description: 'Promo cashback', date: '2024-01-12', time: '09:15' },
-  { id: '5', type: 'debit', amount: 720, description: 'Order #ORD-002', date: '2024-01-10', time: '20:30' },
+interface Transaction {
+  id: string;
+  type: string;
+  amount: number;
+  description: string | null;
+  created_at: string;
+}
+
+interface Reward {
+  id: string;
+  code: string;
+  discount: number;
+  type: 'percent' | 'fixed';
+  minOrder: number;
+  expiresAt: string;
+  description: string;
+}
+
+const mockRewards: Reward[] = [
+  { id: '1', code: 'WELCOME50', discount: 50, type: 'fixed', minOrder: 500, expiresAt: '2025-02-28', description: 'Welcome bonus for new users' },
+  { id: '2', code: 'FOODIE20', discount: 20, type: 'percent', minOrder: 800, expiresAt: '2025-01-31', description: '20% off on orders above Rs. 800' },
+  { id: '3', code: 'FREEDELIVERY', discount: 100, type: 'fixed', minOrder: 600, expiresAt: '2025-03-15', description: 'Free delivery on your next order' },
 ];
 
 const WalletPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [balance] = useState(1450);
+  const [balance, setBalance] = useState(0);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loadingBalance, setLoadingBalance] = useState(true);
   const [showAddMoney, setShowAddMoney] = useState(false);
+  const [showRewards, setShowRewards] = useState(false);
   const [addAmount, setAddAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('jazzcash');
+  const [addingMoney, setAddingMoney] = useState(false);
+
+  // Fetch wallet balance and transactions
+  useEffect(() => {
+    const fetchWalletData = async () => {
+      if (!user?.id) return;
+      
+      setLoadingBalance(true);
+      
+      try {
+        // Fetch balance from profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('wallet_balance')
+          .eq('user_id', user.id)
+          .single();
+        
+        setBalance(profile?.wallet_balance || 0);
+
+        // Fetch transactions
+        const { data: txData } = await supabase
+          .from('wallet_transactions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        
+        setTransactions(txData || []);
+      } catch (error) {
+        console.error('Error fetching wallet data:', error);
+      } finally {
+        setLoadingBalance(false);
+      }
+    };
+    
+    fetchWalletData();
+  }, [user?.id]);
+
+  const handleAddMoney = async () => {
+    if (!user?.id || !addAmount) return;
+    
+    const amount = parseInt(addAmount);
+    if (amount < 100) {
+      toast.error('Minimum amount is Rs. 100');
+      return;
+    }
+
+    setAddingMoney(true);
+
+    try {
+      // Calculate bonus for large top-ups
+      let bonus = 0;
+      if (amount >= 5000) bonus = 250;
+      else if (amount >= 2000) bonus = 100;
+      else if (amount >= 1000) bonus = 50;
+
+      const totalCredit = amount + bonus;
+      const newBalance = balance + totalCredit;
+
+      // Update balance
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ wallet_balance: newBalance })
+        .eq('user_id', user.id);
+      
+      if (updateError) throw updateError;
+
+      // Create transaction record
+      const { error: txError } = await supabase
+        .from('wallet_transactions')
+        .insert({
+          user_id: user.id,
+          type: 'credit',
+          amount: totalCredit,
+          description: bonus > 0 
+            ? `Added via ${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)} (+Rs. ${bonus} bonus)`
+            : `Added via ${paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1)}`,
+        });
+      
+      if (txError) throw txError;
+
+      setBalance(newBalance);
+      
+      // Refresh transactions
+      const { data: txData } = await supabase
+        .from('wallet_transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      setTransactions(txData || []);
+
+      toast.success(
+        bonus > 0 
+          ? `Added ${formatPKR(totalCredit)} to your wallet (including Rs. ${bonus} bonus!)` 
+          : `Added ${formatPKR(amount)} to your wallet`
+      );
+      
+      setShowAddMoney(false);
+      setAddAmount('');
+    } catch (error: any) {
+      console.error('Error adding money:', error);
+      toast.error(error.message || 'Failed to add money');
+    } finally {
+      setAddingMoney(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return {
+      date: date.toLocaleDateString(),
+      time: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success(`Code "${code}" copied to clipboard!`);
+  };
 
   if (!user) {
     return (
@@ -63,7 +205,13 @@ const WalletPage = () => {
             
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 max-w-sm mx-auto">
               <p className="text-white/80 text-sm mb-1">Available Balance</p>
-              <p className="text-4xl font-bold">{formatPKR(balance)}</p>
+              {loadingBalance ? (
+                <div className="flex justify-center py-2">
+                  <Loader2 className="w-8 h-8 animate-spin" />
+                </div>
+              ) : (
+                <p className="text-4xl font-bold">{formatPKR(balance)}</p>
+              )}
             </div>
           </motion.div>
         </div>
@@ -88,6 +236,7 @@ const WalletPage = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => toast.info('Send money feature coming soon!')}
               className="card-base p-4 text-center"
             >
               <div className="w-12 h-12 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -99,6 +248,7 @@ const WalletPage = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => setShowRewards(true)}
               className="card-base p-4 text-center"
             >
               <div className="w-12 h-12 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -106,6 +256,23 @@ const WalletPage = () => {
               </div>
               <p className="font-medium text-foreground">Rewards</p>
             </motion.button>
+          </div>
+        </div>
+      </section>
+
+      {/* Bonus Info */}
+      <section className="py-4">
+        <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
+          <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-xl p-4">
+            <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+              <Tag className="w-4 h-4 text-green-600" />
+              Top-up Bonus
+            </h3>
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="text-muted-foreground">Rs. 1,000+ → <span className="text-green-600 font-medium">+Rs. 50</span></div>
+              <div className="text-muted-foreground">Rs. 2,000+ → <span className="text-green-600 font-medium">+Rs. 100</span></div>
+              <div className="text-muted-foreground">Rs. 5,000+ → <span className="text-green-600 font-medium">+Rs. 250</span></div>
+            </div>
           </div>
         </div>
       </section>
@@ -118,36 +285,47 @@ const WalletPage = () => {
             <h2 className="text-xl font-bold text-foreground">Transaction History</h2>
           </div>
 
-          <div className="space-y-3">
-            {transactions.map((tx, index) => (
-              <motion.div
-                key={tx.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="card-base p-4 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    tx.type === 'credit' ? 'bg-green-500/10' : 'bg-red-500/10'
-                  }`}>
-                    {tx.type === 'credit' ? (
-                      <ArrowDownLeft className="w-5 h-5 text-green-600" />
-                    ) : (
-                      <ArrowUpRight className="w-5 h-5 text-red-500" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{tx.description}</p>
-                    <p className="text-sm text-muted-foreground">{tx.date} at {tx.time}</p>
-                  </div>
-                </div>
-                <span className={`font-bold ${tx.type === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
-                  {tx.type === 'credit' ? '+' : '-'}{formatPKR(tx.amount)}
-                </span>
-              </motion.div>
-            ))}
-          </div>
+          {transactions.length === 0 ? (
+            <div className="text-center py-12">
+              <Wallet className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No transactions yet</p>
+              <p className="text-sm text-muted-foreground">Add money to get started</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {transactions.map((tx, index) => {
+                const { date, time } = formatDate(tx.created_at);
+                return (
+                  <motion.div
+                    key={tx.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="card-base p-4 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        tx.type === 'credit' ? 'bg-green-500/10' : 'bg-red-500/10'
+                      }`}>
+                        {tx.type === 'credit' ? (
+                          <ArrowDownLeft className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <ArrowUpRight className="w-5 h-5 text-red-500" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{tx.description || (tx.type === 'credit' ? 'Added money' : 'Payment')}</p>
+                        <p className="text-sm text-muted-foreground">{date} at {time}</p>
+                      </div>
+                    </div>
+                    <span className={`font-bold ${tx.type === 'credit' ? 'text-green-600' : 'text-red-500'}`}>
+                      {tx.type === 'credit' ? '+' : '-'}{formatPKR(tx.amount)}
+                    </span>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -178,6 +356,11 @@ const WalletPage = () => {
                   className="pl-10 text-lg"
                 />
               </div>
+              {parseInt(addAmount) >= 1000 && (
+                <p className="text-sm text-green-600 mt-1">
+                  +Rs. {parseInt(addAmount) >= 5000 ? 250 : parseInt(addAmount) >= 2000 ? 100 : 50} bonus!
+                </p>
+              )}
             </div>
 
             {/* Quick Amounts */}
@@ -232,10 +415,73 @@ const WalletPage = () => {
           <Button 
             variant="hero" 
             className="w-full" 
-            disabled={!addAmount || parseInt(addAmount) < 100}
+            disabled={!addAmount || parseInt(addAmount) < 100 || addingMoney}
+            onClick={handleAddMoney}
           >
-            Add {addAmount ? formatPKR(parseInt(addAmount)) : 'Money'}
+            {addingMoney ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              `Add ${addAmount ? formatPKR(parseInt(addAmount)) : 'Money'}`
+            )}
           </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rewards Modal */}
+      <Dialog open={showRewards} onOpenChange={setShowRewards}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gift className="w-5 h-5 text-purple-600" />
+              Your Rewards
+            </DialogTitle>
+            <DialogDescription>
+              Available coupons and discounts
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {mockRewards.map((reward) => (
+              <motion.div
+                key={reward.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="border border-dashed border-primary/50 rounded-xl p-4 bg-primary/5"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    {reward.type === 'percent' ? (
+                      <Percent className="w-5 h-5 text-primary" />
+                    ) : (
+                      <Tag className="w-5 h-5 text-primary" />
+                    )}
+                    <span className="font-bold text-lg text-primary">
+                      {reward.type === 'percent' ? `${reward.discount}% OFF` : `Rs. ${reward.discount} OFF`}
+                    </span>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => copyCode(reward.code)}
+                  >
+                    Copy
+                  </Button>
+                </div>
+                <p className="text-sm text-foreground font-medium mb-1">{reward.code}</p>
+                <p className="text-sm text-muted-foreground mb-2">{reward.description}</p>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Min order: Rs. {reward.minOrder}</span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    Expires: {new Date(reward.expiresAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Package, Clock, MapPin, CheckCircle, Truck, ChefHat, XCircle, RefreshCw, Eye, Share2, Heart } from 'lucide-react';
+import { Package, Clock, MapPin, CheckCircle, Truck, ChefHat, XCircle, RefreshCw, Eye, Share2, AlertTriangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Footer from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +10,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import ShareModal from '@/components/ShareModal';
+import { ReportIssueModal } from '@/components/ReportIssueModal';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface OrderItem {
   id: string;
@@ -76,10 +87,49 @@ const Orders = () => {
   const queryClient = useQueryClient();
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
+  const [orderToReport, setOrderToReport] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   const handleShare = (orderId: string) => {
     setSelectedOrderId(orderId);
     setShareModalOpen(true);
+  };
+
+  const handleCancelClick = (orderId: string) => {
+    setOrderToCancel(orderId);
+    setCancelDialogOpen(true);
+  };
+
+  const handleReportClick = (orderId: string) => {
+    setOrderToReport(orderId);
+    setReportIssueOpen(true);
+  };
+
+  const handleCancelOrder = async () => {
+    if (!orderToCancel) return;
+    
+    setCancelling(true);
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'cancelled' })
+        .eq('id', orderToCancel)
+        .eq('status', 'pending'); // Can only cancel pending orders
+
+      if (error) throw error;
+
+      toast.success('Order cancelled successfully. Refund will be processed within 3-5 business days.');
+      queryClient.invalidateQueries({ queryKey: ['user-orders', user?.id] });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to cancel order');
+    } finally {
+      setCancelling(false);
+      setCancelDialogOpen(false);
+      setOrderToCancel(null);
+    }
   };
 
   const { data: orders = [], isLoading, refetch } = useQuery({
@@ -135,6 +185,7 @@ const Orders = () => {
               preparing: 'Restaurant is preparing your order 👨‍🍳',
               on_the_way: 'Your rider is on the way! 🛵',
               delivered: 'Order delivered! Enjoy your meal 😋',
+              cancelled: 'Order has been cancelled',
             };
             
             if (statusMessages[newStatus]) {
@@ -280,6 +331,8 @@ const Orders = () => {
                 const status = statusConfig[order.status];
                 const StatusIcon = status.icon;
                 const isActive = order.status !== 'delivered' && order.status !== 'cancelled';
+                const canCancel = order.status === 'pending';
+                const canReport = order.status === 'delivered';
 
                 return (
                   <motion.div
@@ -347,7 +400,33 @@ const Orders = () => {
                         <Clock className="w-4 h-4" />
                         <span>{getEstimatedDelivery(order.status, order.created_at)}</span>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        {/* Cancel Button - only for pending orders */}
+                        {canCancel && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive border-destructive/50 hover:bg-destructive/10"
+                            onClick={() => handleCancelClick(order.id)}
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Cancel
+                          </Button>
+                        )}
+                        
+                        {/* Report Issue Button - only for delivered orders */}
+                        {canReport && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-amber-600 border-amber-600/50 hover:bg-amber-500/10"
+                            onClick={() => handleReportClick(order.id)}
+                          >
+                            <AlertTriangle className="w-4 h-4 mr-1" />
+                            Report Issue
+                          </Button>
+                        )}
+                        
                         {isActive && (
                           <Button
                             variant="outline"
@@ -363,6 +442,16 @@ const Orders = () => {
                         </span>
                       </div>
                     </div>
+
+                    {/* Cancel Notice for pending orders */}
+                    {canCancel && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          You can cancel your order before the restaurant starts preparing it.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Order Timeline for active orders */}
                     {isActive && (
@@ -438,6 +527,36 @@ const Orders = () => {
         title={`Order #${selectedOrderId?.slice(0, 8).toUpperCase()}`}
         url={`${window.location.origin}/order/${selectedOrderId}`}
         description="Check out my food order on FoodieHub!"
+      />
+
+      {/* Cancel Order Dialog */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Order?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel this order? This action cannot be undone.
+              Refunds will be processed within 3-5 business days.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>Keep Order</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelOrder}
+              disabled={cancelling}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {cancelling ? 'Cancelling...' : 'Yes, Cancel Order'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Report Issue Modal */}
+      <ReportIssueModal
+        open={reportIssueOpen}
+        onOpenChange={setReportIssueOpen}
+        orderId={orderToReport || ''}
       />
 
       <Footer />
