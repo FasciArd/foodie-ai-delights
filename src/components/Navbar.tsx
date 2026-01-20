@@ -4,8 +4,9 @@ import { ShoppingCart, User, Menu, X, LogOut, ChefHat, Wallet, Crown, Settings, 
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/hooks/useAuth';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getRoleDashboardPath } from '@/components/RoleBasedRedirect';
+import { supabase } from '@/integrations/supabase/client';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,27 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
+
+  // Fetch user profile name
+  useEffect(() => {
+    const fetchUserName = async () => {
+      if (!user?.id) {
+        setUserName(null);
+        return;
+      }
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('user_id', user.id)
+        .single();
+      
+      setUserName(data?.name || null);
+    };
+    
+    fetchUserName();
+  }, [user?.id]);
 
   // Role-based navigation links
   const getNavLinks = (): { to: string; label: string; icon?: React.ReactNode }[] => {
@@ -140,7 +162,7 @@ const Navbar = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="px-3 py-2">
-                    <p className="text-sm font-medium">{user.email}</p>
+                    <p className="text-sm font-medium">{userName || user.user_metadata?.name || 'User'}</p>
                     <p className="text-xs text-muted-foreground capitalize">{userRole || 'Customer'}</p>
                   </div>
                   <DropdownMenuSeparator />

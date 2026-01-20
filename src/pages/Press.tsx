@@ -88,6 +88,7 @@ const Press = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
+                onClick={() => navigate(`/press/${release.id}`)}
                 className="card-base p-6 group cursor-pointer hover:border-primary/50 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">

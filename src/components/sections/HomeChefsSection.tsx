@@ -86,6 +86,7 @@ const HomeChefsSection = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               whileHover={{ y: -8 }}
+              onClick={() => navigate(`/homechefs/${chef.id}`)}
               className="card-base overflow-hidden cursor-pointer group"
             >
               <div className="relative h-40 overflow-hidden">

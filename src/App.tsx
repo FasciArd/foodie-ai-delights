@@ -31,7 +31,9 @@ import NotFound from "./pages/NotFound";
 import About from "./pages/About";
 import Careers from "./pages/Careers";
 import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 import Press from "./pages/Press";
+import PressRelease from "./pages/PressRelease";
 import Help from "./pages/Help";
 import Safety from "./pages/Safety";
 import Terms from "./pages/Terms";
@@ -67,7 +69,9 @@ const App = () => (
               <Route path="/about" element={<About />} />
               <Route path="/careers" element={<Careers />} />
               <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:id" element={<BlogPost />} />
               <Route path="/press" element={<Press />} />
+              <Route path="/press/:id" element={<PressRelease />} />
               <Route path="/help" element={<Help />} />
               <Route path="/safety" element={<Safety />} />
               <Route path="/terms" element={<Terms />} />
