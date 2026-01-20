@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Crown, Check, Truck, Percent, Gift, Star, Utensils, ArrowRight } from 'lucide-react';
+import { Crown, Check, Truck, Percent, Gift, Star, Utensils, ArrowRight, CreditCard, X, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { formatPKR } from '@/lib/currency';
@@ -54,6 +57,15 @@ const ProMembershipPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState('quarterly');
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'jazzcash' | 'easypaisa' | 'card'>('card');
+  const [paymentForm, setPaymentForm] = useState({
+    phoneNumber: '',
+    cardNumber: '',
+    cardName: '',
+    expiry: '',
+    cvv: '',
+  });
 
   const handleSubscribe = () => {
     if (!user) {
@@ -61,9 +73,27 @@ const ProMembershipPage = () => {
       navigate('/auth');
       return;
     }
-    toast.success('Redirecting to payment...');
-    // Handle payment flow
+    setPaymentModalOpen(true);
   };
+
+  const handlePaymentSubmit = () => {
+    if (paymentMethod === 'card') {
+      if (!paymentForm.cardNumber || !paymentForm.cardName || !paymentForm.expiry || !paymentForm.cvv) {
+        toast.error('Please fill in all card details');
+        return;
+      }
+    } else {
+      if (!paymentForm.phoneNumber) {
+        toast.error('Please enter your phone number');
+        return;
+      }
+    }
+    toast.success('Payment successful! Welcome to FoodiePro 🎉');
+    setPaymentModalOpen(false);
+    setPaymentForm({ phoneNumber: '', cardNumber: '', cardName: '', expiry: '', cvv: '' });
+  };
+
+  const selectedPlanData = plans.find(p => p.id === selectedPlan);
 
   return (
     <div className="min-h-screen flex flex-col pt-20">
@@ -216,6 +246,122 @@ const ProMembershipPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Payment Modal */}
+      <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Complete Payment</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Plan Summary */}
+            <div className="bg-gradient-warm p-4 rounded-xl">
+              <p className="text-sm text-muted-foreground mb-1">Selected Plan</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-primary">{formatPKR(selectedPlanData?.price || 0)}</span>
+                <span className="text-muted-foreground">/{selectedPlanData?.period}</span>
+              </div>
+            </div>
+
+            {/* Payment Method Selection */}
+            <div className="space-y-3">
+              <Label>Payment Method</Label>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => setPaymentMethod('jazzcash')}
+                  className={`p-3 rounded-xl border-2 text-center transition-all ${
+                    paymentMethod === 'jazzcash' ? 'border-primary bg-primary/5' : 'border-border'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">📱</div>
+                  <span className="text-xs font-medium">JazzCash</span>
+                </button>
+                <button
+                  onClick={() => setPaymentMethod('easypaisa')}
+                  className={`p-3 rounded-xl border-2 text-center transition-all ${
+                    paymentMethod === 'easypaisa' ? 'border-primary bg-primary/5' : 'border-border'
+                  }`}
+                >
+                  <div className="text-2xl mb-1">💚</div>
+                  <span className="text-xs font-medium">Easypaisa</span>
+                </button>
+                <button
+                  onClick={() => setPaymentMethod('card')}
+                  className={`p-3 rounded-xl border-2 text-center transition-all ${
+                    paymentMethod === 'card' ? 'border-primary bg-primary/5' : 'border-border'
+                  }`}
+                >
+                  <CreditCard className="w-6 h-6 mx-auto mb-1" />
+                  <span className="text-xs font-medium">Visa/Debit</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Payment Form */}
+            {(paymentMethod === 'jazzcash' || paymentMethod === 'easypaisa') && (
+              <div className="space-y-2">
+                <Label>Phone Number</Label>
+                <Input
+                  value={paymentForm.phoneNumber}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, phoneNumber: e.target.value })}
+                  placeholder="03XX-XXXXXXX"
+                />
+                <p className="text-xs text-muted-foreground">
+                  You will receive a payment request on your {paymentMethod === 'jazzcash' ? 'JazzCash' : 'Easypaisa'} account
+                </p>
+              </div>
+            )}
+
+            {paymentMethod === 'card' && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Card Number</Label>
+                  <Input
+                    value={paymentForm.cardNumber}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, cardNumber: e.target.value })}
+                    placeholder="1234 5678 9012 3456"
+                    maxLength={19}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cardholder Name</Label>
+                  <Input
+                    value={paymentForm.cardName}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, cardName: e.target.value })}
+                    placeholder="Name on card"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Expiry</Label>
+                    <Input
+                      value={paymentForm.expiry}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, expiry: e.target.value })}
+                      placeholder="MM/YY"
+                      maxLength={5}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>CVV</Label>
+                    <Input
+                      type="password"
+                      value={paymentForm.cvv}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, cvv: e.target.value })}
+                      placeholder="123"
+                      maxLength={4}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Button onClick={handlePaymentSubmit} className="w-full" size="lg">
+              Pay {formatPKR(selectedPlanData?.price || 0)}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>

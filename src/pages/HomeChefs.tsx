@@ -219,7 +219,7 @@ const HomeChefs = forwardRef<HTMLDivElement>((_, ref) => {
                       <span className="text-xs bg-secondary px-2 py-1 rounded-md">
                         {chef.reviews} reviews
                       </span>
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" onClick={() => navigate(`/homechef/${chef.id}`)}>
                         View Menu
                       </Button>
                     </div>
