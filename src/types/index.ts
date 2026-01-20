@@ -17,6 +17,7 @@ export interface Restaurant {
   featured?: boolean;
   tags: string[] | null;
   description?: string | null;
+  is_active?: boolean | null;
 }
 
 export interface MenuItem {
@@ -48,6 +49,7 @@ export const toRestaurant = (db: DbRestaurant): Restaurant => ({
   distance: '1.2 km',
   tags: db.tags,
   description: db.description,
+  is_active: db.is_active,
 });
 
 export const toMenuItem = (db: DbMenuItem): MenuItem => ({
