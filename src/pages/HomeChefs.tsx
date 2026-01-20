@@ -1,6 +1,7 @@
 import { useState, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { ChefHat, Star, Clock, Heart, Search, MapPin } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Footer from '@/components/Footer';
@@ -81,6 +82,7 @@ const allHomeChefs = [
 ];
 
 const HomeChefs = forwardRef<HTMLDivElement>((_, ref) => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArea, setSelectedArea] = useState('all');
 
