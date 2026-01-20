@@ -84,6 +84,7 @@ const Blog = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className="card-base overflow-hidden group cursor-pointer"
+                onClick={() => navigate(`/blog/${post.id}`)}
               >
                 <div className="aspect-video overflow-hidden">
                   <img

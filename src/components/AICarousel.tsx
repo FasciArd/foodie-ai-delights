@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { MenuItem } from '@/types';
 import { useCart } from '@/context/CartContext';
@@ -15,7 +16,12 @@ interface AICarouselProps {
 const AICarousel = ({ items, title, subtitle }: AICarouselProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const { addItem } = useCart();
+  const navigate = useNavigate();
   const itemsPerView = 3;
+
+  const handleItemClick = (item: MenuItem) => {
+    navigate(`/restaurant/${item.restaurantId}`);
+  };
 
   const nextSlide = () => {
     setCurrentIndex((prev) =>
@@ -84,7 +90,10 @@ const AICarousel = ({ items, title, subtitle }: AICarouselProps) => {
               transition={{ delay: index * 0.1 }}
               className="min-w-[calc(33.333%-1rem)] flex-shrink-0"
             >
-              <div className="card-base overflow-hidden group cursor-pointer h-full">
+              <div 
+                className="card-base overflow-hidden group cursor-pointer h-full"
+                onClick={() => handleItemClick(item)}
+              >
                 <div className="relative h-32 overflow-hidden">
                   <motion.img
                     whileHover={{ scale: 1.1 }}
@@ -105,7 +114,10 @@ const AICarousel = ({ items, title, subtitle }: AICarouselProps) => {
                     <Button
                       variant="cart"
                       size="icon-sm"
-                      onClick={() => addItem(item)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addItem(item);
+                      }}
                     >
                       <motion.span whileTap={{ scale: 0.8 }}>+</motion.span>
                     </Button>

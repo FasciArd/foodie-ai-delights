@@ -1,12 +1,14 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Briefcase, MapPin, Clock, ArrowRight, Users, Zap, Coffee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
-import { toast } from 'sonner';
+import { JobApplicationModal } from '@/components/JobApplicationModal';
 
 const Careers = () => {
   const navigate = useNavigate();
+  const [selectedJob, setSelectedJob] = useState<string | null>(null);
 
   const perks = [
     { icon: Coffee, title: 'Free Meals', description: 'Daily lunch credits on FoodieHub' },
@@ -15,45 +17,15 @@ const Careers = () => {
   ];
 
   const jobs = [
-    {
-      id: '1',
-      title: 'Senior Frontend Developer',
-      department: 'Engineering',
-      location: 'Karachi, Pakistan',
-      type: 'Full-time',
-    },
-    {
-      id: '2',
-      title: 'Product Manager',
-      department: 'Product',
-      location: 'Karachi, Pakistan',
-      type: 'Full-time',
-    },
-    {
-      id: '3',
-      title: 'Customer Support Lead',
-      department: 'Operations',
-      location: 'Karachi, Pakistan',
-      type: 'Full-time',
-    },
-    {
-      id: '4',
-      title: 'Marketing Specialist',
-      department: 'Marketing',
-      location: 'Remote',
-      type: 'Full-time',
-    },
-    {
-      id: '5',
-      title: 'Delivery Operations Manager',
-      department: 'Operations',
-      location: 'Karachi, Pakistan',
-      type: 'Full-time',
-    },
+    { id: '1', title: 'Senior Frontend Developer', department: 'Engineering', location: 'Karachi, Pakistan', type: 'Full-time' },
+    { id: '2', title: 'Product Manager', department: 'Product', location: 'Karachi, Pakistan', type: 'Full-time' },
+    { id: '3', title: 'Customer Support Lead', department: 'Operations', location: 'Karachi, Pakistan', type: 'Full-time' },
+    { id: '4', title: 'Marketing Specialist', department: 'Marketing', location: 'Remote', type: 'Full-time' },
+    { id: '5', title: 'Delivery Operations Manager', department: 'Operations', location: 'Karachi, Pakistan', type: 'Full-time' },
   ];
 
   const handleApply = (jobTitle: string) => {
-    toast.success(`Application for ${jobTitle} submitted! We'll be in touch soon.`);
+    setSelectedJob(jobTitle);
   };
 
   return (
@@ -150,6 +122,12 @@ const Careers = () => {
           </div>
         </div>
       </section>
+
+      <JobApplicationModal
+        open={!!selectedJob}
+        onOpenChange={(open) => !open && setSelectedJob(null)}
+        jobTitle={selectedJob || ''}
+      />
 
       <Footer />
     </div>
