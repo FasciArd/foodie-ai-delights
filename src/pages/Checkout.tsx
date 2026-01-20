@@ -134,9 +134,9 @@ const Checkout = () => {
         .insert({
           order_id: order.id,
           amount: finalTotal,
-          method: paymentMethod === 'wallet' ? 'cod' : paymentMethod, // Map wallet to cod for DB enum
-          status: paymentMethod === 'wallet' ? 'completed' : 'pending',
-        });
+          method: paymentMethod === 'wallet' ? 'cod' : paymentMethod,
+          status: paymentMethod === 'wallet' ? 'success' : 'pending',
+        } as any);
 
       if (paymentError) throw paymentError;
 
