@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Package, Clock, MapPin, CheckCircle, Truck, ChefHat, XCircle, RefreshCw, Eye } from 'lucide-react';
+import { Package, Clock, MapPin, CheckCircle, Truck, ChefHat, XCircle, RefreshCw, Eye, Share2, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Footer from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
+import ShareModal from '@/components/ShareModal';
+
 interface OrderItem {
   id: string;
   name: string;
@@ -71,6 +74,13 @@ const Orders = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+
+  const handleShare = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setShareModalOpen(true);
+  };
 
   const { data: orders = [], isLoading, refetch } = useQuery({
     queryKey: ['user-orders', user?.id],
@@ -289,11 +299,22 @@ const Orders = () => {
                           {formatDate(order.created_at)}
                         </p>
                       </div>
-                      <div
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${status.color} ${status.textColor}`}
-                      >
-                        <StatusIcon className="w-4 h-4" />
-                        <span className="text-sm font-medium">{status.label}</span>
+                      <div className="flex items-center gap-2">
+                        {/* Share Button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleShare(order.id)}
+                        >
+                          <Share2 className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                        <div
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${status.color} ${status.textColor}`}
+                        >
+                          <StatusIcon className="w-4 h-4" />
+                          <span className="text-sm font-medium">{status.label}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -409,6 +430,15 @@ const Orders = () => {
           )}
         </div>
       </section>
+
+      {/* Share Modal */}
+      <ShareModal
+        open={shareModalOpen}
+        onOpenChange={setShareModalOpen}
+        title={`Order #${selectedOrderId?.slice(0, 8).toUpperCase()}`}
+        url={`${window.location.origin}/order/${selectedOrderId}`}
+        description="Check out my food order on FoodieHub!"
+      />
 
       <Footer />
     </div>
