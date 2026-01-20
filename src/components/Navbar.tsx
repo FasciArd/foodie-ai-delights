@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart, User, Menu, X, LogOut, ChefHat, Wallet, Crown, Settings, ImageIcon, Store, Bike, Package } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, LogOut, ChefHat, Wallet, Crown, Settings, Store, Bike, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/hooks/useAuth';

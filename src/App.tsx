@@ -24,7 +24,7 @@ import ProMembership from "./pages/ProMembership";
 import Profile from "./pages/Profile";
 import RoleRegistration from "./pages/RoleRegistration";
 import HomeChefs from "./pages/HomeChefs";
-import ImageEnhancer from "./pages/ImageEnhancer";
+// ImageEnhancer removed - only available inside food upload modal for restaurant owners
 import RestaurantDashboard from "./pages/RestaurantDashboard";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
 import NotFound from "./pages/NotFound";
@@ -129,7 +129,7 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="/register" element={<RoleRegistration />} />
               <Route path="/role-registration" element={<RoleRegistration />} />
-              <Route path="/image-enhancer" element={<ImageEnhancer />} />
+              {/* Image Enhancer route removed - feature only available in food upload modal for owners */}
               
               <Route path="*" element={<NotFound />} />
             </Routes>
