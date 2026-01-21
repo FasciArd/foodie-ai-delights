@@ -27,6 +27,7 @@ import HomeChefs from "./pages/HomeChefs";
 // ImageEnhancer removed - only available inside food upload modal for restaurant owners
 import RestaurantDashboard from "./pages/RestaurantDashboard";
 import DeliveryDashboard from "./pages/DeliveryDashboard";
+import EarningsDashboard from "./pages/EarningsDashboard";
 import NotFound from "./pages/NotFound";
 import About from "./pages/About";
 import Careers from "./pages/Careers";
@@ -119,6 +120,13 @@ const App = () => (
               <Route path="/delivery-dashboard" element={
                 <RoleGuard allowedRoles={['driver', 'admin']} fallbackPath="/">
                   <DeliveryDashboard />
+                </RoleGuard>
+              } />
+              
+              {/* Earnings routes for restaurant owners and drivers */}
+              <Route path="/earnings" element={
+                <RoleGuard allowedRoles={['restaurant', 'driver', 'admin']} fallbackPath="/">
+                  <EarningsDashboard />
                 </RoleGuard>
               } />
               

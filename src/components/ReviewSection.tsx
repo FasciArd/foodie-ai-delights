@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Send, Trash2, User, AlertCircle } from 'lucide-react';
+import { Star, Send, Trash2, User, AlertCircle, Camera, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,6 +8,7 @@ import { useReviews, useAddReview, useDeleteReview } from '@/hooks/useReviews';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 interface ReviewSectionProps {
   restaurantId: string;
@@ -19,10 +20,13 @@ export default function ReviewSection({ restaurantId }: ReviewSectionProps) {
   const addReview = useAddReview();
   const deleteReview = useDeleteReview();
   const { toast } = useToast();
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const { uploading: imageUploading, uploadImage } = useImageUpload({ folder: 'reviews' });
 
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [reviewImage, setReviewImage] = useState('');
   const [isRestaurantOwner, setIsRestaurantOwner] = useState(false);
   const [hasDeliveredOrder, setHasDeliveredOrder] = useState(false);
   const [checkingEligibility, setCheckingEligibility] = useState(true);
@@ -72,6 +76,13 @@ export default function ReviewSection({ restaurantId }: ReviewSectionProps) {
     checkReviewEligibility();
   }, [user, userRole, restaurantId]);
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await uploadImage(file);
+    if (url) setReviewImage(url);
+  };
+
   const handleSubmit = async () => {
     if (!user) {
       toast({ title: 'Please login', description: 'You must be logged in to leave a review.', variant: 'destructive' });
@@ -91,10 +102,11 @@ export default function ReviewSection({ restaurantId }: ReviewSectionProps) {
     }
 
     try {
-      await addReview.mutateAsync({ restaurantId, rating, comment });
+      await addReview.mutateAsync({ restaurantId, rating, comment, imageUrl: reviewImage || undefined });
       toast({ title: 'Review submitted!', description: 'Thanks for your feedback.' });
       setRating(0);
       setComment('');
+      setReviewImage('');
     } catch (e: any) {
       toast({ title: 'Error', description: e.message || 'Failed to submit review', variant: 'destructive' });
     }
@@ -182,6 +194,23 @@ export default function ReviewSection({ restaurantId }: ReviewSectionProps) {
             onChange={(e) => setComment(e.target.value)}
             className="mb-3"
           />
+          {/* Image Upload */}
+          <div className="mb-3">
+            <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+            {reviewImage ? (
+              <div className="relative inline-block">
+                <img src={reviewImage} alt="Review" className="h-20 w-20 object-cover rounded-lg" />
+                <button onClick={() => setReviewImage('')} className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-1">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <Button type="button" variant="outline" size="sm" onClick={() => imageInputRef.current?.click()} disabled={imageUploading}>
+                <Camera className="w-4 h-4 mr-2" />
+                {imageUploading ? 'Uploading...' : 'Add Photo'}
+              </Button>
+            )}
+          </div>
           <Button onClick={handleSubmit} disabled={addReview.isPending}>
             <Send className="w-4 h-4 mr-2" />
             {addReview.isPending ? 'Submitting...' : 'Submit Review'}
