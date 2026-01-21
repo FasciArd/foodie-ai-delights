@@ -2,18 +2,20 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Wallet, TrendingUp, ArrowDownToLine, Clock, CheckCircle, 
-  DollarSign, FileText, History, AlertCircle, Loader2 
+  DollarSign, FileText, History, AlertCircle, Loader2, Receipt
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { useEarningsSummary, useWithdrawals } from '@/hooks/useEarnings';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { formatPKR } from '@/lib/currency';
 import { format } from 'date-fns';
 import Footer from '@/components/Footer';
 import WithdrawalModal from '@/components/WithdrawalModal';
 import TaxBillModal from '@/components/TaxBillModal';
+import TaxBillsHistory from '@/components/TaxBillsHistory';
 import { useNavigate } from 'react-router-dom';
 
 const COMMISSION_RATES = {
@@ -37,6 +39,9 @@ const EarningsDashboard = () => {
     withdrawnBalance,
     earnings,
   } = useEarningsSummary();
+
+  // Use wallet balance hook for synced data
+  const walletData = useWalletBalance();
 
   const { data: withdrawals = [], isLoading: withdrawalsLoading } = useWithdrawals();
 
@@ -202,7 +207,7 @@ const EarningsDashboard = () => {
       <section className="py-6 flex-1">
         <div className="container mx-auto px-4 sm:px-6">
           <Tabs defaultValue="earnings">
-            <TabsList className="w-full max-w-md">
+            <TabsList className="w-full max-w-lg">
               <TabsTrigger value="earnings" className="flex-1">
                 <TrendingUp className="w-4 h-4 mr-2" />
                 Earnings
@@ -210,6 +215,10 @@ const EarningsDashboard = () => {
               <TabsTrigger value="withdrawals" className="flex-1">
                 <History className="w-4 h-4 mr-2" />
                 Withdrawals
+              </TabsTrigger>
+              <TabsTrigger value="taxes" className="flex-1">
+                <Receipt className="w-4 h-4 mr-2" />
+                Tax Bills
               </TabsTrigger>
             </TabsList>
 
@@ -329,6 +338,11 @@ const EarningsDashboard = () => {
                   ))}
                 </div>
               )}
+            </TabsContent>
+
+            {/* Tax Bills Tab */}
+            <TabsContent value="taxes" className="mt-6">
+              <TaxBillsHistory />
             </TabsContent>
           </Tabs>
         </div>

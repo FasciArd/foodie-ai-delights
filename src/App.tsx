@@ -7,6 +7,8 @@ import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import OrderNotification from "@/components/OrderNotification";
+import EnhancedNotifications from "@/components/EnhancedNotifications";
+import AccountLockBanner from "@/components/AccountLockBanner";
 import AIChatbot from "@/components/AIChatbot";
 import PushNotificationPrompt from "@/components/PushNotificationPrompt";
 import RoleGuard from "@/components/RoleGuard";
@@ -56,6 +58,8 @@ const App = () => (
           <BrowserRouter>
             <Navbar />
             <OrderNotification />
+            <EnhancedNotifications />
+            <AccountLockBanner />
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Home />} />

@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.get-mapbox-token]
 verify_jwt = false
+
+[functions.send-notifications]
+verify_jwt = false
