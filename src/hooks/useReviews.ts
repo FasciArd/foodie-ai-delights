@@ -42,10 +42,12 @@ export function useAddReview() {
       restaurantId,
       rating,
       comment,
+      imageUrl,
     }: {
       restaurantId: string;
       rating: number;
       comment?: string;
+      imageUrl?: string;
     }) => {
       if (!user) throw new Error('Must be logged in');
 
@@ -56,7 +58,8 @@ export function useAddReview() {
           user_id: user.id,
           rating,
           comment: comment || null,
-        })
+          image_url: imageUrl || null,
+        } as any)
         .select()
         .single();
 

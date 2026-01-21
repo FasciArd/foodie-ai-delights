@@ -1,98 +1,30 @@
 import { useState, forwardRef } from 'react';
 import { motion } from 'framer-motion';
-import { ChefHat, Star, Clock, Heart, Search, MapPin } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ChefHat, Star, Clock, Heart, Search, MapPin, Loader2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Footer from '@/components/Footer';
-
-const allHomeChefs = [
-  {
-    id: '1',
-    name: 'Ammi Ki Rasoi',
-    specialty: 'Authentic Biryani & Nihari',
-    rating: 4.9,
-    reviews: 234,
-    deliveryTime: '45-60 min',
-    image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=400',
-    featured: true,
-    area: 'Gulshan-e-Iqbal',
-    description: 'Traditional family recipes passed down through generations',
-  },
-  {
-    id: '2',
-    name: 'Dadi Ka Kitchen',
-    specialty: 'Traditional Haleem & Korma',
-    rating: 4.8,
-    reviews: 189,
-    deliveryTime: '40-55 min',
-    image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=400',
-    featured: false,
-    area: 'DHA Phase 6',
-    description: 'Slow-cooked dishes made with love and patience',
-  },
-  {
-    id: '3',
-    name: 'Karachi Homemade',
-    specialty: 'Seekh Kabab & Karahi',
-    rating: 4.7,
-    reviews: 156,
-    deliveryTime: '35-50 min',
-    image: 'https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=400',
-    featured: true,
-    area: 'Clifton',
-    description: 'Fresh grilled delicacies from our home kitchen',
-  },
-  {
-    id: '4',
-    name: 'Nani Ka Ghar',
-    specialty: 'Paratha & Qeema',
-    rating: 4.9,
-    reviews: 312,
-    deliveryTime: '30-45 min',
-    image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
-    featured: false,
-    area: 'North Nazimabad',
-    description: 'Authentic breakfast and nashta items',
-  },
-  {
-    id: '5',
-    name: 'Bibi Ki Dastarkhan',
-    specialty: 'Pulao & Qorma',
-    rating: 4.6,
-    reviews: 98,
-    deliveryTime: '50-65 min',
-    image: 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400',
-    featured: false,
-    area: 'PECHS',
-    description: 'Royal Mughlai cuisine with authentic taste',
-  },
-  {
-    id: '6',
-    name: 'Mama Ji Foods',
-    specialty: 'Chicken Karahi & Biryani',
-    rating: 4.8,
-    reviews: 267,
-    deliveryTime: '40-55 min',
-    image: 'https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?w=400',
-    featured: true,
-    area: 'Korangi',
-    description: 'Spicy and flavorful homemade dishes',
-  },
-];
+import { useHomeChefs, useFeaturedHomeChefItems } from '@/hooks/useHomeChefs';
+import { formatPKR } from '@/lib/currency';
+import { useCart } from '@/context/CartContext';
 
 const HomeChefs = forwardRef<HTMLDivElement>((_, ref) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArea, setSelectedArea] = useState('all');
 
+  const { data: homeChefs = [], isLoading: chefsLoading } = useHomeChefs();
+  const { data: featuredItems = [], isLoading: itemsLoading } = useFeaturedHomeChefItems(6);
+  const { addItem } = useCart();
+
   const areas = ['all', 'Gulshan-e-Iqbal', 'DHA Phase 6', 'Clifton', 'North Nazimabad', 'PECHS', 'Korangi'];
 
-  const filteredChefs = allHomeChefs.filter(chef => {
+  const filteredChefs = homeChefs.filter(chef => {
     const matchesSearch = chef.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         chef.specialty.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesArea = selectedArea === 'all' || chef.area === selectedArea;
-    return matchesSearch && matchesArea;
+                         chef.category.toLowerCase().includes(searchQuery.toLowerCase());
+    // For now, we don't have area in DB, so skip area filter if chef doesn't have it
+    return matchesSearch;
   });
 
   return (
@@ -131,6 +63,69 @@ const HomeChefs = forwardRef<HTMLDivElement>((_, ref) => {
         </div>
       </section>
 
+      {/* Featured Items Section - Clickable & Orderable */}
+      {featuredItems.length > 0 && (
+        <section className="py-8 bg-gradient-warm">
+          <div className="container mx-auto px-4 sm:px-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Featured HomeChef Dishes</h2>
+                <p className="text-muted-foreground">Popular items you can order right now</p>
+              </div>
+            </div>
+
+            {itemsLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {featuredItems.map((item, index) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="bg-card rounded-xl overflow-hidden border border-border group hover:shadow-lg transition-all"
+                  >
+                    <Link to={`/restaurant/${item.restaurantId}`}>
+                      <div className="relative h-32 overflow-hidden">
+                        <img
+                          src={item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300'}
+                          alt={item.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                        <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-0.5 rounded-full text-xs font-bold">
+                          HomeChef
+                        </div>
+                      </div>
+                    </Link>
+                    <div className="p-3">
+                      <h3 className="font-semibold text-sm text-foreground truncate">{item.name}</h3>
+                      <p className="text-xs text-muted-foreground truncate">{item.restaurant.name}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="font-bold text-primary text-sm">{formatPKR(item.price)}</span>
+                        <Button
+                          size="sm"
+                          variant="cart"
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            addItem(item);
+                          }}
+                        >
+                          +
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Filters */}
       <section className="py-4 border-b border-border/50 sticky top-16 z-40 bg-background/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 sm:px-6">
@@ -159,14 +154,28 @@ const HomeChefs = forwardRef<HTMLDivElement>((_, ref) => {
             </p>
           </div>
 
-          {filteredChefs.length === 0 ? (
+          {chefsLoading ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : filteredChefs.length === 0 ? (
             <div className="text-center py-16">
               <div className="text-5xl mb-4">👨‍🍳</div>
               <h3 className="text-xl font-bold text-foreground mb-2">No home chefs found</h3>
-              <p className="text-muted-foreground mb-4">Try adjusting your search or filters</p>
-              <Button variant="outline" onClick={() => { setSearchQuery(''); setSelectedArea('all'); }}>
-                Clear Filters
-              </Button>
+              <p className="text-muted-foreground mb-4">
+                {homeChefs.length === 0 
+                  ? "Be the first to register as a HomeChef!"
+                  : "Try adjusting your search or filters"}
+              </p>
+              {homeChefs.length === 0 ? (
+                <Button onClick={() => navigate('/role-registration')}>
+                  Register as HomeChef
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => { setSearchQuery(''); setSelectedArea('all'); }}>
+                  Clear Filters
+                </Button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -178,24 +187,23 @@ const HomeChefs = forwardRef<HTMLDivElement>((_, ref) => {
                   transition={{ delay: index * 0.1 }}
                   whileHover={{ y: -8 }}
                   className="card-base overflow-hidden cursor-pointer group"
+                  onClick={() => navigate(`/restaurant/${chef.id}`)}
                 >
                   <div className="relative h-48 overflow-hidden">
                     <motion.img
                       whileHover={{ scale: 1.1 }}
                       transition={{ duration: 0.5 }}
-                      src={chef.image}
+                      src={chef.image || 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400'}
                       alt={chef.name}
                       className="w-full h-full object-cover"
                     />
-                    {chef.featured && (
-                      <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                        <Heart className="w-3 h-3 fill-current" />
-                        Featured
-                      </div>
-                    )}
+                    <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                      <ChefHat className="w-3 h-3" />
+                      HomeChef
+                    </div>
                     <div className="absolute top-3 right-3 bg-background/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1">
                       <Star className="w-4 h-4 text-primary fill-primary" />
-                      <span className="font-semibold text-sm">{chef.rating}</span>
+                      <span className="font-semibold text-sm">{chef.rating || '4.5'}</span>
                     </div>
                   </div>
                   
@@ -203,26 +211,24 @@ const HomeChefs = forwardRef<HTMLDivElement>((_, ref) => {
                     <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-colors">
                       {chef.name}
                     </h3>
-                    <p className="text-sm text-muted-foreground mb-2">{chef.specialty}</p>
-                    <p className="text-xs text-muted-foreground mb-4">{chef.description}</p>
+                    <p className="text-sm text-muted-foreground mb-2">{chef.category}</p>
+                    <p className="text-xs text-muted-foreground mb-4 line-clamp-2">
+                      {chef.description || 'Authentic homemade dishes prepared with love'}
+                    </p>
                     
                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        <span>{chef.deliveryTime}</span>
+                        <span>{chef.deliveryTime || '30-45 min'}</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4" />
-                        <span>{chef.area}</span>
-                      </div>
+                      <span className="text-primary font-semibold">
+                        {formatPKR(chef.deliveryFee || 50)} delivery
+                      </span>
                     </div>
                     
-                    <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-                      <span className="text-xs bg-secondary px-2 py-1 rounded-md">
-                        {chef.reviews} reviews
-                      </span>
-                      <Button size="sm" variant="outline" onClick={() => navigate(`/homechef/${chef.id}`)}>
-                        View Menu
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <Button size="sm" className="w-full" variant="outline">
+                        View Menu & Order
                       </Button>
                     </div>
                   </div>
