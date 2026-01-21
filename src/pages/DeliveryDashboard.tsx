@@ -236,6 +236,8 @@ const DeliveryDashboard = () => {
 
   const handleUpdateDeliveryStatus = async (orderId: string, status: 'on_the_way' | 'delivered') => {
     try {
+      const order = assignedOrders.find(o => o.id === orderId);
+      
       const { error } = await supabase
         .from('orders')
         .update({ status })
@@ -243,9 +245,59 @@ const DeliveryDashboard = () => {
       
       if (error) throw error;
       
+      // Auto-add earnings when order is delivered
+      if (status === 'delivered' && user && order) {
+        const driverEarningsGross = 50; // Fixed delivery fee for driver (Rs. 50 per delivery)
+        const driverCommissionRate = 0.05; // 5% commission for drivers
+        const driverCommission = driverEarningsGross * driverCommissionRate;
+        const driverNet = driverEarningsGross - driverCommission;
+        
+        // Add driver earnings
+        await supabase.from('earnings').insert({
+          user_id: user.id,
+          order_id: orderId,
+          user_type: 'driver',
+          gross_amount: driverEarningsGross,
+          commission_rate: driverCommissionRate,
+          commission_amount: driverCommission,
+          net_amount: driverNet,
+          status: 'available',
+        });
+        
+        // Add restaurant owner earnings if restaurant exists
+        if (order.restaurant_id) {
+          // Get restaurant owner
+          const { data: restaurantData } = await supabase
+            .from('restaurants')
+            .select('owner_id, business_type')
+            .eq('id', order.restaurant_id)
+            .single();
+          
+          if (restaurantData?.owner_id) {
+            const restaurantCommissionRate = 0.10; // 10% for restaurants
+            const restaurantGross = order.total_price;
+            const restaurantCommission = restaurantGross * restaurantCommissionRate;
+            const restaurantNet = restaurantGross - restaurantCommission;
+            
+            await supabase.from('earnings').insert({
+              user_id: restaurantData.owner_id,
+              order_id: orderId,
+              user_type: restaurantData.business_type === 'homechef' ? 'homechef' : 'restaurant',
+              gross_amount: restaurantGross,
+              commission_rate: restaurantCommissionRate,
+              commission_amount: restaurantCommission,
+              net_amount: restaurantNet,
+              status: 'available',
+            });
+          }
+        }
+        
+        queryClient.invalidateQueries({ queryKey: ['earnings'] });
+      }
+      
       const statusMessages = {
         on_the_way: 'Order picked up! On the way to customer.',
-        delivered: 'Order delivered successfully! 🎉',
+        delivered: 'Order delivered successfully! 🎉 Earnings added!',
       };
       
       toast.success(statusMessages[status]);
@@ -281,6 +333,14 @@ const DeliveryDashboard = () => {
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => navigate('/earnings')}
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Earnings
+                </Button>
                 <span className={`text-sm font-medium ${isOnline ? 'text-emerald-500' : 'text-muted-foreground'}`}>
                   {isOnline ? 'Online' : 'Offline'}
                 </span>

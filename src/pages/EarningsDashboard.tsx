@@ -13,6 +13,7 @@ import { formatPKR } from '@/lib/currency';
 import { format } from 'date-fns';
 import Footer from '@/components/Footer';
 import WithdrawalModal from '@/components/WithdrawalModal';
+import TaxBillModal from '@/components/TaxBillModal';
 import { useNavigate } from 'react-router-dom';
 
 const COMMISSION_RATES = {
@@ -25,6 +26,7 @@ const EarningsDashboard = () => {
   const navigate = useNavigate();
   const { user, userRole, loading: authLoading } = useAuth();
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
+  const [taxBillModalOpen, setTaxBillModalOpen] = useState(false);
   
   const {
     totalGross,
@@ -110,15 +112,25 @@ const EarningsDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl sm:text-3xl font-bold text-primary">{formatPKR(availableBalance)}</p>
-                  <Button
-                    size="sm"
-                    className="mt-3 w-full"
-                    onClick={() => setWithdrawalModalOpen(true)}
-                    disabled={availableBalance <= 0}
-                  >
-                    <ArrowDownToLine className="w-4 h-4 mr-2" />
-                    Withdraw
-                  </Button>
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setWithdrawalModalOpen(true)}
+                      disabled={availableBalance <= 0}
+                    >
+                      <ArrowDownToLine className="w-4 h-4 mr-1" />
+                      Withdraw
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setTaxBillModalOpen(true)}
+                      disabled={earnings.length === 0}
+                    >
+                      <FileText className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -331,6 +343,14 @@ const EarningsDashboard = () => {
         availableBalance={availableBalance}
         earnings={earnings}
         commissionRate={commissionRate}
+      />
+
+      {/* Tax Bill Modal */}
+      <TaxBillModal
+        open={taxBillModalOpen}
+        onOpenChange={setTaxBillModalOpen}
+        earnings={earnings}
+        userType={userRole || 'restaurant'}
       />
     </div>
   );

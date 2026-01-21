@@ -815,14 +815,24 @@ const RestaurantDashboard = () => {
                   </div>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setRestaurantSettingsOpen(true)}
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => navigate('/earnings')}
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Earnings
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRestaurantSettingsOpen(true)}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
+              </div>
             </div>
           </motion.div>
         </div>
