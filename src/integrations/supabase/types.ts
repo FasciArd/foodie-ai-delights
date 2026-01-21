@@ -58,6 +58,56 @@ export type Database = {
           },
         ]
       }
+      earnings: {
+        Row: {
+          commission_amount: number
+          commission_rate: number
+          created_at: string
+          gross_amount: number
+          id: string
+          net_amount: number
+          order_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          commission_amount?: number
+          commission_rate?: number
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          net_amount?: number
+          order_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          commission_amount?: number
+          commission_rate?: number
+          created_at?: string
+          gross_amount?: number
+          id?: string
+          net_amount?: number
+          order_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "earnings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_items: {
         Row: {
           calories: number | null
@@ -379,9 +429,11 @@ export type Database = {
       restaurants: {
         Row: {
           address: string | null
+          business_type: string
           category: string
           created_at: string
           delivery_fee: number | null
+          delivery_radius: number | null
           delivery_time: string | null
           description: string | null
           id: string
@@ -399,9 +451,11 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          business_type?: string
           category: string
           created_at?: string
           delivery_fee?: number | null
+          delivery_radius?: number | null
           delivery_time?: string | null
           description?: string | null
           id?: string
@@ -419,9 +473,11 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          business_type?: string
           category?: string
           created_at?: string
           delivery_fee?: number | null
+          delivery_radius?: number | null
           delivery_time?: string | null
           description?: string | null
           id?: string
@@ -444,6 +500,7 @@ export type Database = {
           comment: string | null
           created_at: string
           id: string
+          image_url: string | null
           rating: number
           restaurant_id: string
           updated_at: string
@@ -453,6 +510,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
+          image_url?: string | null
           rating: number
           restaurant_id: string
           updated_at?: string
@@ -462,6 +520,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
+          image_url?: string | null
           rating?: number
           restaurant_id?: string
           updated_at?: string
@@ -532,6 +591,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      withdrawals: {
+        Row: {
+          account_number: string
+          amount: number
+          created_at: string
+          id: string
+          method: string
+          notes: string | null
+          processed_at: string | null
+          status: string
+          transaction_ref: string | null
+          user_id: string
+        }
+        Insert: {
+          account_number: string
+          amount: number
+          created_at?: string
+          id?: string
+          method: string
+          notes?: string | null
+          processed_at?: string | null
+          status?: string
+          transaction_ref?: string | null
+          user_id: string
+        }
+        Update: {
+          account_number?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          processed_at?: string | null
+          status?: string
+          transaction_ref?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
