@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_locks: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          locked_at: string
+          reason: string
+          tax_bill_id: string | null
+          unlocked_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          locked_at?: string
+          reason: string
+          tax_bill_id?: string | null
+          unlocked_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          locked_at?: string
+          reason?: string
+          tax_bill_id?: string | null
+          unlocked_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_locks_tax_bill_id_fkey"
+            columns: ["tax_bill_id"]
+            isOneToOne: false
+            referencedRelation: "tax_bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drivers: {
         Row: {
           created_at: string
@@ -532,6 +573,71 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_bills: {
+        Row: {
+          created_at: string
+          due_date: string
+          id: string
+          net_payout: number
+          paid_at: string | null
+          period_end: string
+          period_start: string
+          status: string
+          tax_amount: number
+          tax_rate: number
+          total_earnings: number
+          updated_at: string
+          user_id: string
+          user_type: string
+          withdrawal_id: string | null
+          withdrawn_amount: number
+        }
+        Insert: {
+          created_at?: string
+          due_date: string
+          id?: string
+          net_payout?: number
+          paid_at?: string | null
+          period_end: string
+          period_start: string
+          status?: string
+          tax_amount?: number
+          tax_rate?: number
+          total_earnings?: number
+          updated_at?: string
+          user_id: string
+          user_type: string
+          withdrawal_id?: string | null
+          withdrawn_amount?: number
+        }
+        Update: {
+          created_at?: string
+          due_date?: string
+          id?: string
+          net_payout?: number
+          paid_at?: string | null
+          period_end?: string
+          period_start?: string
+          status?: string
+          tax_amount?: number
+          tax_rate?: number
+          total_earnings?: number
+          updated_at?: string
+          user_id?: string
+          user_type?: string
+          withdrawal_id?: string | null
+          withdrawn_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_bills_withdrawal_id_fkey"
+            columns: ["withdrawal_id"]
+            isOneToOne: false
+            referencedRelation: "withdrawals"
             referencedColumns: ["id"]
           },
         ]
