@@ -8,8 +8,10 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { formatPKR } from '@/lib/currency';
 import { useCreateWithdrawal, type Earning } from '@/hooks/useEarnings';
+import { useCreateTaxBill } from '@/hooks/useTaxBills';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 interface WithdrawalModalProps {
   open: boolean;
@@ -27,7 +29,9 @@ export default function WithdrawalModal({
   commissionRate,
 }: WithdrawalModalProps) {
   const { toast } = useToast();
+  const { userRole } = useAuth();
   const createWithdrawal = useCreateWithdrawal();
+  const createTaxBill = useCreateTaxBill();
   
   const [step, setStep] = useState<'form' | 'bill' | 'success'>('form');
   const [method, setMethod] = useState<'easypaisa' | 'jazzcash' | 'bank'>('easypaisa');
@@ -43,6 +47,11 @@ export default function WithdrawalModal({
   const totalCommission = availableEarnings.reduce((sum, e) => sum + e.commission_amount, 0);
   const totalNet = availableEarnings.reduce((sum, e) => sum + e.net_amount, 0);
 
+  // Tax calculation
+  const taxRate = userRole === 'driver' ? 0.05 : 0.10;
+  const taxAmount = withdrawAmount * taxRate;
+  const netAfterTax = withdrawAmount - taxAmount;
+
   const handleGenerateBill = () => {
     if (!accountNumber) {
       toast({ title: 'Error', description: 'Please enter account number', variant: 'destructive' });
@@ -57,13 +66,24 @@ export default function WithdrawalModal({
 
   const handleConfirmWithdrawal = async () => {
     try {
-      await createWithdrawal.mutateAsync({
+      // Create withdrawal
+      const withdrawal = await createWithdrawal.mutateAsync({
         amount: withdrawAmount,
         method,
         accountNumber,
       });
+
+      // Create tax bill for this withdrawal
+      await createTaxBill.mutateAsync({
+        withdrawalId: withdrawal.id,
+        totalEarnings: totalNet,
+        withdrawnAmount: withdrawAmount,
+        periodStart: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+        periodEnd: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
+      });
+
       setStep('success');
-      toast({ title: 'Success!', description: 'Withdrawal request submitted successfully.' });
+      toast({ title: 'Success!', description: 'Withdrawal request submitted. Tax bill generated.' });
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
@@ -219,9 +239,17 @@ export default function WithdrawalModal({
                 <span>Platform Commission ({(commissionRate * 100).toFixed(0)}%)</span>
                 <span>-{formatPKR(totalCommission)}</span>
               </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Withdrawal Amount</span>
+                <span>{formatPKR(withdrawAmount)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-amber-600">
+                <span>Tax ({(taxRate * 100).toFixed(0)}%) - Due within 30 days</span>
+                <span>-{formatPKR(taxAmount)}</span>
+              </div>
               <div className="flex justify-between font-bold pt-2 border-t border-dashed">
-                <span>Net Payout</span>
-                <span className="text-primary">{formatPKR(withdrawAmount)}</span>
+                <span>Net After Tax</span>
+                <span className="text-primary">{formatPKR(netAfterTax)}</span>
               </div>
             </div>
 
