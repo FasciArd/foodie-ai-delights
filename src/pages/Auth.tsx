@@ -1,42 +1,73 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Phone, ChevronLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { getRoleDashboardPath } from '@/components/RoleBasedRedirect';
-import { z } from 'zod';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Mail,
+  Lock,
+  User,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Phone,
+  ChevronLeft,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { getRoleDashboardPath } from "@/components/RoleBasedRedirect";
+import { z } from "zod";
 
-type AuthMethod = 'email' | 'phone';
-type AuthStep = 'method' | 'credentials' | 'otp';
+type AuthMethod = "email" | "phone";
+type AuthStep = "method" | "credentials" | "otp";
 
-const emailSchema = z
+const emailSchema = z.string().email("Please enter a valid email address");
+const nameSchema = z
   .string()
-  .email('Please enter a valid email address')
-  .refine((v) => v.toLowerCase().endsWith('@gmail.com'), 'Only Gmail addresses are allowed');
-const phoneSchema = z.string()
-  .regex(/^\+?[0-9]{10,14}$/, 'Please enter a valid phone number (e.g., +923001234567)');
-const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
+  .trim()
+  .min(2, "Full name must be at least 2 characters")
+  .max(80, "Full name must be under 80 characters")
+  .regex(/^[A-Za-z][A-Za-z\s'.-]*$/, "Please use alphabetic characters only");
+const phoneSchema = z
+  .string()
+  .regex(/^(\+?92|0)?3\d{9}$/, "Use +923001234567 or 03001234567");
+const passwordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(
+    /^(?=.*[A-Za-z])(?=.*\d).+$/,
+    "Include at least one letter and one number",
+  );
+
+type FieldErrors = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  password?: string;
+};
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('email');
-  const [authStep, setAuthStep] = useState<AuthStep>('method');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [otp, setOtp] = useState('');
+  const [authMethod, setAuthMethod] = useState<AuthMethod>("email");
+  const [authStep, setAuthStep] = useState<AuthStep>("method");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [otp, setOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; phone?: string; password?: string }>({});
-  
-  const { signIn, signUp, signInWithGoogle, user, userRole, roleLoading } = useAuth();
+  const [errors, setErrors] = useState<FieldErrors>({});
+
+  const { signIn, signUp, signInWithGoogle, user, userRole, roleLoading } =
+    useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -50,110 +81,155 @@ const Auth = () => {
 
   // Show auth restriction errors (set by AuthProvider)
   useEffect(() => {
-    const msg = localStorage.getItem('auth_error');
+    const msg = localStorage.getItem("auth_error");
     if (!msg) return;
 
     toast({
-      title: 'Sign-in blocked',
+      title: "Sign-in blocked",
       description: msg,
-      variant: 'destructive',
+      variant: "destructive",
     });
-    localStorage.removeItem('auth_error');
+    localStorage.removeItem("auth_error");
   }, [toast]);
 
+  const normalizeEmail = (value: string) => value.trim().toLowerCase();
+  const normalizePhone = (value: string) => value.replace(/\s|-/g, "");
+
   const validateEmail = (value: string) => {
-    const result = emailSchema.safeParse(value);
+    const normalized = normalizeEmail(value);
+    const result = emailSchema.safeParse(normalized);
     if (!result.success) {
-      setErrors(prev => ({ ...prev, email: result.error.errors[0].message }));
+      setErrors((prev) => ({ ...prev, email: result.error.errors[0].message }));
+      return { ok: false, normalized };
+    }
+    setErrors((prev) => ({ ...prev, email: undefined }));
+    return { ok: true, normalized };
+  };
+
+  const validateName = (value: string) => {
+    const result = nameSchema.safeParse(value);
+    if (!result.success) {
+      setErrors((prev) => ({ ...prev, name: result.error.errors[0].message }));
       return false;
     }
-    setErrors(prev => ({ ...prev, email: undefined }));
+    setErrors((prev) => ({ ...prev, name: undefined }));
     return true;
   };
 
   const validatePhone = (value: string) => {
-    const result = phoneSchema.safeParse(value);
+    const normalized = normalizePhone(value);
+    const result = phoneSchema.safeParse(normalized);
     if (!result.success) {
-      setErrors(prev => ({ ...prev, phone: result.error.errors[0].message }));
-      return false;
+      setErrors((prev) => ({ ...prev, phone: result.error.errors[0].message }));
+      return { ok: false, normalized };
     }
-    setErrors(prev => ({ ...prev, phone: undefined }));
-    return true;
+    setErrors((prev) => ({ ...prev, phone: undefined }));
+    return { ok: true, normalized };
   };
 
   const validatePassword = (value: string) => {
-    const result = passwordSchema.safeParse(value);
+    const trimmed = value.trim();
+    const result = passwordSchema.safeParse(trimmed);
     if (!result.success) {
-      setErrors(prev => ({ ...prev, password: result.error.errors[0].message }));
-      return false;
+      setErrors((prev) => ({
+        ...prev,
+        password: result.error.errors[0].message,
+      }));
+      return { ok: false, trimmed };
     }
-    setErrors(prev => ({ ...prev, password: undefined }));
-    return true;
+    setErrors((prev) => ({ ...prev, password: undefined }));
+    return { ok: true, trimmed };
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateEmail(email) || !validatePassword(password)) return;
-    
+    const emailResult = validateEmail(email);
+    const passwordResult = validatePassword(password);
+    const nameOk = isLogin || validateName(name.trim());
+
+    if (!emailResult.ok || !passwordResult.ok || !nameOk) return;
+
+    const normalizedEmail = emailResult.normalized;
+    const normalizedPassword = passwordResult.trimmed;
+    if (!isLogin) setName(name.trim());
+    setEmail(normalizedEmail);
+    setPassword(normalizedPassword);
+
     setLoading(true);
 
     try {
       if (isLogin) {
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(normalizedEmail, normalizedPassword);
         if (error) throw error;
-        toast({ title: 'Welcome back!', description: 'You have successfully signed in.' });
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully signed in.",
+        });
         // Role-based redirect happens in useEffect
       } else {
-        const { error } = await signUp(email, password, name);
+        const { error } = await signUp(
+          normalizedEmail,
+          normalizedPassword,
+          name.trim(),
+        );
         if (error) throw error;
-        toast({ title: 'Account created!', description: 'Welcome to FoodieHub.' });
+        toast({
+          title: "Account created!",
+          description: "Welcome to FoodieHub.",
+        });
         // Role-based redirect happens in useEffect
       }
     } catch (error: any) {
-      let errorMessage = error.message || 'Something went wrong';
-      
+      let errorMessage = error.message || "Something went wrong";
+
       // Handle specific Supabase errors
-      if (error.message?.includes('User already registered')) {
-        errorMessage = 'This email is already registered. Please sign in instead.';
-      } else if (error.message?.includes('Invalid login credentials')) {
-        errorMessage = 'Incorrect email or password. Please try again.';
+      if (error.message?.includes("User already registered")) {
+        errorMessage =
+          "This email is already registered. Please sign in instead.";
+      } else if (error.message?.includes("Invalid login credentials")) {
+        errorMessage = "Incorrect email or password. Please try again.";
       }
-      
+
       toast({
-        title: 'Error',
+        title: "Error",
         description: errorMessage,
-        variant: 'destructive',
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePhoneSendOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validatePhone(phone)) return;
-    
+  const handlePhoneSendOTP = async (e?: React.FormEvent | React.MouseEvent) => {
+    e?.preventDefault();
+    const phoneResult = validatePhone(phone);
+    if (!phoneResult.ok) return;
+
+    const normalizedPhone = phoneResult.normalized;
+    const formattedPhone = normalizedPhone.startsWith("+")
+      ? normalizedPhone
+      : `+92${normalizedPhone.replace(/^0/, "")}`;
+    setPhone(normalizedPhone);
+
     setLoading(true);
 
     try {
       const { error } = await supabase.auth.signInWithOtp({
-        phone: phone.startsWith('+') ? phone : `+92${phone.replace(/^0/, '')}`,
+        phone: formattedPhone,
       });
-      
+
       if (error) throw error;
-      
-      toast({ 
-        title: 'OTP Sent!', 
-        description: 'Please check your phone for the verification code.' 
+
+      toast({
+        title: "OTP Sent!",
+        description: "Please check your phone for the verification code.",
       });
-      setAuthStep('otp');
+      setAuthStep("otp");
     } catch (error: any) {
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to send OTP',
-        variant: 'destructive',
+        title: "Error",
+        description: error.message || "Failed to send OTP",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -161,34 +237,45 @@ const Auth = () => {
   };
 
   const handleVerifyOTP = async () => {
-    if (otp.length !== 6) {
+    if (!/^\d{6}$/.test(otp)) {
       toast({
-        title: 'Invalid OTP',
-        description: 'Please enter the complete 6-digit code',
-        variant: 'destructive',
+        title: "Invalid OTP",
+        description: "Please enter the complete 6-digit code",
+        variant: "destructive",
       });
       return;
     }
-    
+
+    const phoneResult = validatePhone(phone);
+    if (!phoneResult.ok) return;
+
+    const normalizedPhone = phoneResult.normalized;
+    const formattedPhone = normalizedPhone.startsWith("+")
+      ? normalizedPhone
+      : `+92${normalizedPhone.replace(/^0/, "")}`;
+    setPhone(normalizedPhone);
+
     setLoading(true);
 
     try {
-      const formattedPhone = phone.startsWith('+') ? phone : `+92${phone.replace(/^0/, '')}`;
       const { error } = await supabase.auth.verifyOtp({
         phone: formattedPhone,
         token: otp,
-        type: 'sms',
+        type: "sms",
       });
-      
+
       if (error) throw error;
-      
-      toast({ title: 'Verified!', description: 'You have successfully signed in.' });
-      navigate('/');
+
+      toast({
+        title: "Verified!",
+        description: "You have successfully signed in.",
+      });
+      navigate("/");
     } catch (error: any) {
       toast({
-        title: 'Verification Failed',
-        description: error.message || 'Invalid OTP. Please try again.',
-        variant: 'destructive',
+        title: "Verification Failed",
+        description: error.message || "Invalid OTP. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -202,9 +289,11 @@ const Auth = () => {
       if (error) throw error;
     } catch (error: any) {
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to sign in with Google. Please ensure Google sign-in is enabled.',
-        variant: 'destructive',
+        title: "Error",
+        description:
+          error.message ||
+          "Failed to sign in with Google. Please ensure Google sign-in is enabled.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -212,8 +301,8 @@ const Auth = () => {
   };
 
   const resetToMethodSelection = () => {
-    setAuthStep('method');
-    setOtp('');
+    setAuthStep("method");
+    setOtp("");
     setErrors({});
   };
 
@@ -228,12 +317,17 @@ const Auth = () => {
         type="button"
         variant="outline"
         className="w-full h-14 justify-start gap-3 text-left"
-        onClick={() => { setAuthMethod('email'); setAuthStep('credentials'); }}
+        onClick={() => {
+          setAuthMethod("email");
+          setAuthStep("credentials");
+        }}
       >
         <Mail className="w-5 h-5 text-primary" />
         <div>
           <p className="font-medium">Continue with Email</p>
-          <p className="text-xs text-muted-foreground">Use your email and password</p>
+          <p className="text-xs text-muted-foreground">
+            Use your email and password
+          </p>
         </div>
       </Button>
 
@@ -241,12 +335,17 @@ const Auth = () => {
         type="button"
         variant="outline"
         className="w-full h-14 justify-start gap-3 text-left"
-        onClick={() => { setAuthMethod('phone'); setAuthStep('credentials'); }}
+        onClick={() => {
+          setAuthMethod("phone");
+          setAuthStep("credentials");
+        }}
       >
         <Phone className="w-5 h-5 text-primary" />
         <div>
           <p className="font-medium">Continue with Phone</p>
-          <p className="text-xs text-muted-foreground">Get OTP on your mobile number</p>
+          <p className="text-xs text-muted-foreground">
+            Get OTP on your mobile number
+          </p>
         </div>
       </Button>
 
@@ -315,11 +414,17 @@ const Auth = () => {
                 type="text"
                 placeholder="John Doe"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="pl-10"
+                onChange={(e) => {
+                  setName(e.target.value);
+                  validateName(e.target.value.trim());
+                }}
+                className={`pl-10 ${errors.name ? "border-destructive" : ""}`}
                 required={!isLogin}
               />
             </div>
+            {errors.name && (
+              <p className="text-xs text-destructive">{errors.name}</p>
+            )}
           </div>
         )}
 
@@ -332,12 +437,17 @@ const Auth = () => {
               type="email"
               placeholder="you@gmail.com"
               value={email}
-              onChange={(e) => { setEmail(e.target.value); validateEmail(e.target.value); }}
-              className={`pl-10 ${errors.email ? 'border-destructive' : ''}`}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                validateEmail(e.target.value);
+              }}
+              className={`pl-10 ${errors.email ? "border-destructive" : ""}`}
               required
             />
           </div>
-          {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+          {errors.email && (
+            <p className="text-xs text-destructive">{errors.email}</p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -346,11 +456,14 @@ const Auth = () => {
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               id="password"
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               placeholder="••••••••"
               value={password}
-              onChange={(e) => { setPassword(e.target.value); validatePassword(e.target.value); }}
-              className={`pl-10 pr-10 ${errors.password ? 'border-destructive' : ''}`}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                validatePassword(e.target.value);
+              }}
+              className={`pl-10 pr-10 ${errors.password ? "border-destructive" : ""}`}
               required
             />
             <button
@@ -358,14 +471,20 @@ const Auth = () => {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </button>
           </div>
-          {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
+          {errors.password && (
+            <p className="text-xs text-destructive">{errors.password}</p>
+          )}
         </div>
 
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
+          {loading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </form>
@@ -397,19 +516,25 @@ const Auth = () => {
               type="tel"
               placeholder="+923001234567"
               value={phone}
-              onChange={(e) => { setPhone(e.target.value); validatePhone(e.target.value); }}
-              className={`pl-10 ${errors.phone ? 'border-destructive' : ''}`}
+              onChange={(e) => {
+                setPhone(e.target.value);
+                validatePhone(e.target.value);
+              }}
+              className={`pl-10 ${errors.phone ? "border-destructive" : ""}`}
               required
             />
           </div>
-          {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
+          {errors.phone && (
+            <p className="text-xs text-destructive">{errors.phone}</p>
+          )}
           <p className="text-xs text-muted-foreground">
-            Enter your Pakistani mobile number (e.g., +923001234567 or 03001234567)
+            Enter your Pakistani mobile number (e.g., +923001234567 or
+            03001234567)
           </p>
         </div>
 
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? 'Sending OTP...' : 'Send OTP'}
+          {loading ? "Sending OTP..." : "Send OTP"}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </form>
@@ -425,7 +550,7 @@ const Auth = () => {
     >
       <button
         type="button"
-        onClick={() => setAuthStep('credentials')}
+        onClick={() => setAuthStep("credentials")}
         className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6"
       >
         <ChevronLeft className="w-4 h-4" />
@@ -436,19 +561,18 @@ const Auth = () => {
         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
           <Phone className="w-8 h-8 text-primary" />
         </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">Enter Verification Code</h2>
+        <h2 className="text-xl font-bold text-foreground mb-2">
+          Enter Verification Code
+        </h2>
         <p className="text-sm text-muted-foreground">
-          We've sent a 6-digit code to<br />
+          We've sent a 6-digit code to
+          <br />
           <span className="font-medium text-foreground">{phone}</span>
         </p>
       </div>
 
       <div className="flex justify-center mb-6">
-        <InputOTP
-          maxLength={6}
-          value={otp}
-          onChange={setOtp}
-        >
+        <InputOTP maxLength={6} value={otp} onChange={setOtp}>
           <InputOTPGroup>
             <InputOTPSlot index={0} />
             <InputOTPSlot index={1} />
@@ -460,12 +584,12 @@ const Auth = () => {
         </InputOTP>
       </div>
 
-      <Button 
-        onClick={handleVerifyOTP} 
-        className="w-full" 
+      <Button
+        onClick={handleVerifyOTP}
+        className="w-full"
         disabled={loading || otp.length !== 6}
       >
-        {loading ? 'Verifying...' : 'Verify & Continue'}
+        {loading ? "Verifying..." : "Verify & Continue"}
       </Button>
 
       <button
@@ -491,35 +615,44 @@ const Auth = () => {
         >
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">
-              {authStep === 'otp' 
-                ? 'Verify Your Phone' 
-                : isLogin 
-                  ? 'Welcome Back' 
-                  : 'Create Account'}
+              {authStep === "otp"
+                ? "Verify Your Phone"
+                : isLogin
+                  ? "Welcome Back"
+                  : "Create Account"}
             </h1>
             <p className="text-muted-foreground">
-              {authStep === 'otp'
-                ? 'Enter the OTP sent to your phone'
+              {authStep === "otp"
+                ? "Enter the OTP sent to your phone"
                 : isLogin
-                  ? 'Sign in to continue ordering delicious food'
-                  : 'Join FoodieHub and start ordering today'}
+                  ? "Sign in to continue ordering delicious food"
+                  : "Join FoodieHub and start ordering today"}
             </p>
           </div>
 
-          {authStep === 'method' && renderMethodSelection()}
-          {authStep === 'credentials' && authMethod === 'email' && renderEmailCredentials()}
-          {authStep === 'credentials' && authMethod === 'phone' && renderPhoneCredentials()}
-          {authStep === 'otp' && renderOTPVerification()}
+          {authStep === "method" && renderMethodSelection()}
+          {authStep === "credentials" &&
+            authMethod === "email" &&
+            renderEmailCredentials()}
+          {authStep === "credentials" &&
+            authMethod === "phone" &&
+            renderPhoneCredentials()}
+          {authStep === "otp" && renderOTPVerification()}
 
-          {authStep !== 'otp' && (
+          {authStep !== "otp" && (
             <p className="mt-6 text-center text-sm text-muted-foreground">
-              {isLogin ? "Don't have an account? " : 'Already have an account? '}
+              {isLogin
+                ? "Don't have an account? "
+                : "Already have an account? "}
               <button
                 type="button"
-                onClick={() => { setIsLogin(!isLogin); resetToMethodSelection(); }}
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  resetToMethodSelection();
+                }}
                 className="text-primary font-medium hover:underline"
               >
-                {isLogin ? 'Sign up' : 'Sign in'}
+                {isLogin ? "Sign up" : "Sign in"}
               </button>
             </p>
           )}
@@ -537,7 +670,8 @@ const Auth = () => {
           <div className="text-6xl mb-6">🍔</div>
           <h2 className="text-4xl font-bold text-foreground mb-4">FoodieHub</h2>
           <p className="text-xl text-muted-foreground max-w-md">
-            Your favorite restaurants, delivered fast to your doorstep in Karachi
+            Your favorite restaurants, delivered fast to your doorstep in
+            Karachi
           </p>
           <div className="mt-8 flex justify-center gap-4">
             <div className="text-center">

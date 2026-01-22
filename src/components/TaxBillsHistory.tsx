@@ -1,11 +1,19 @@
-import { motion } from 'framer-motion';
-import { FileText, CheckCircle, Clock, AlertTriangle, CreditCard, Loader2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { useTaxBills, useMarkTaxPaid } from '@/hooks/useTaxBills';
-import { formatPKR } from '@/lib/currency';
-import { format, isPast } from 'date-fns';
-import { toast } from 'sonner';
+import { motion } from "framer-motion";
+import {
+  FileText,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  CreditCard,
+  Loader2,
+  Receipt,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useTaxBills, useMarkTaxPaid } from "@/hooks/useTaxBills";
+import { formatPKR } from "@/lib/currency";
+import { format, isPast } from "date-fns";
+import { toast } from "sonner";
 
 export default function TaxBillsHistory() {
   const { data: taxBills = [], isLoading } = useTaxBills();
@@ -14,30 +22,30 @@ export default function TaxBillsHistory() {
   const handleMarkPaid = async (billId: string) => {
     try {
       await markPaid.mutateAsync(billId);
-      toast.success('Tax bill marked as paid');
+      toast.success("Tax bill marked as paid");
     } catch (error) {
-      toast.error('Failed to mark tax bill as paid');
+      toast.error("Failed to mark tax bill as paid");
     }
   };
 
   const getStatusInfo = (bill: any) => {
-    if (bill.status === 'paid') {
+    if (bill.status === "paid") {
       return {
-        label: 'Paid',
-        color: 'text-emerald-500 bg-emerald-500/10',
+        label: "Paid",
+        color: "text-emerald-500 bg-emerald-500/10",
         icon: <CheckCircle className="w-4 h-4" />,
       };
     }
     if (isPast(new Date(bill.due_date))) {
       return {
-        label: 'Overdue',
-        color: 'text-destructive bg-destructive/10',
+        label: "Overdue",
+        color: "text-destructive bg-destructive/10",
         icon: <AlertTriangle className="w-4 h-4" />,
       };
     }
     return {
-      label: 'Pending',
-      color: 'text-amber-500 bg-amber-500/10',
+      label: "Pending",
+      color: "text-amber-500 bg-amber-500/10",
       icon: <Clock className="w-4 h-4" />,
     };
   };
@@ -53,7 +61,7 @@ export default function TaxBillsHistory() {
   if (taxBills.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="text-5xl mb-4">📋</div>
+        <Receipt className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
         <h3 className="text-xl font-bold text-foreground mb-2">No Tax Bills</h3>
         <p className="text-muted-foreground">
           Tax bills are generated automatically when you make withdrawals
@@ -66,7 +74,8 @@ export default function TaxBillsHistory() {
     <div className="space-y-4">
       {taxBills.map((bill) => {
         const status = getStatusInfo(bill);
-        const isOverdue = bill.status === 'pending' && isPast(new Date(bill.due_date));
+        const isOverdue =
+          bill.status === "pending" && isPast(new Date(bill.due_date));
 
         return (
           <motion.div
@@ -74,7 +83,7 @@ export default function TaxBillsHistory() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <Card className={isOverdue ? 'border-destructive/50' : ''}>
+            <Card className={isOverdue ? "border-destructive/50" : ""}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-3">
@@ -83,19 +92,23 @@ export default function TaxBillsHistory() {
                     </div>
                     <div>
                       <p className="font-medium text-foreground">
-                        Tax Bill - {format(new Date(bill.period_start), 'MMM yyyy')}
+                        Tax Bill -{" "}
+                        {format(new Date(bill.period_start), "MMM yyyy")}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {format(new Date(bill.period_start), 'PP')} - {format(new Date(bill.period_end), 'PP')}
+                        {format(new Date(bill.period_start), "PP")} -{" "}
+                        {format(new Date(bill.period_end), "PP")}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
-                        <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${status.color}`}>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${status.color}`}
+                        >
                           {status.icon}
                           {status.label}
                         </span>
-                        {bill.status === 'pending' && (
+                        {bill.status === "pending" && (
                           <span className="text-xs text-muted-foreground">
-                            Due: {format(new Date(bill.due_date), 'PP')}
+                            Due: {format(new Date(bill.due_date), "PP")}
                           </span>
                         )}
                       </div>
@@ -113,20 +126,26 @@ export default function TaxBillsHistory() {
                 <div className="mt-4 pt-4 border-t border-border grid grid-cols-3 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground">Withdrawn</p>
-                    <p className="font-medium">{formatPKR(bill.withdrawn_amount)}</p>
+                    <p className="font-medium">
+                      {formatPKR(bill.withdrawn_amount)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Tax Rate</p>
-                    <p className="font-medium">{(bill.tax_rate * 100).toFixed(0)}%</p>
+                    <p className="font-medium">
+                      {(bill.tax_rate * 100).toFixed(0)}%
+                    </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Net Payout</p>
-                    <p className="font-medium text-primary">{formatPKR(bill.net_payout)}</p>
+                    <p className="font-medium text-primary">
+                      {formatPKR(bill.net_payout)}
+                    </p>
                   </div>
                 </div>
 
                 {/* Actions */}
-                {bill.status === 'pending' && (
+                {bill.status === "pending" && (
                   <div className="mt-4 pt-4 border-t border-border">
                     <Button
                       onClick={() => handleMarkPaid(bill.id)}
@@ -141,15 +160,16 @@ export default function TaxBillsHistory() {
                       Mark as Paid
                     </Button>
                     <p className="text-xs text-muted-foreground text-center mt-2">
-                      Payment should be made to the platform's designated account
+                      Payment should be made to the platform's designated
+                      account
                     </p>
                   </div>
                 )}
 
-                {bill.status === 'paid' && bill.paid_at && (
+                {bill.status === "paid" && bill.paid_at && (
                   <div className="mt-4 pt-4 border-t border-border text-center">
                     <p className="text-sm text-emerald-500">
-                      ✓ Paid on {format(new Date(bill.paid_at), 'PPP')}
+                      ✓ Paid on {format(new Date(bill.paid_at), "PPP")}
                     </p>
                   </div>
                 )}

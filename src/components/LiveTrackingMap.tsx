@@ -1,21 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useEffect, useRef, useState } from "react";
+import { MapPin, Navigation, Home } from "lucide-react";
 
 interface LiveTrackingMapProps {
   orderId: string;
   deliveryAddress: string;
   restaurantLocation?: { lat: number; lng: number };
+  deliveryLocation?: { lat: number; lng: number };
   driverLocation?: { lat: number; lng: number };
 }
 
 // Karachi coordinates
 const KARACHI_CENTER = { lat: 24.8607, lng: 67.0011 };
 const KARACHI_AREAS = {
-  clifton: { lat: 24.8120, lng: 67.0308 },
+  clifton: { lat: 24.812, lng: 67.0308 },
   dha: { lat: 24.8039, lng: 67.0543 },
-  gulshan: { lat: 24.9180, lng: 67.0916 },
+  gulshan: { lat: 24.918, lng: 67.0916 },
   saddar: { lat: 24.8526, lng: 67.0177 },
   korangi: { lat: 24.8341, lng: 67.1335 },
   nazimabad: { lat: 24.9129, lng: 67.0323 },
@@ -29,44 +28,21 @@ const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
   orderId,
   deliveryAddress,
   restaurantLocation,
+  deliveryLocation,
   driverLocation: initialDriverLocation,
 }) => {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const driverMarker = useRef<mapboxgl.Marker | null>(null);
-  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   const [driverLocation, setDriverLocation] = useState(initialDriverLocation);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch Mapbox token from edge function
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('get-mapbox-token');
-        if (error) throw error;
-        if (data?.token) {
-          setMapboxToken(data.token);
-        } else {
-          setError('Mapbox token not configured');
-        }
-      } catch (err) {
-        console.error('Failed to fetch Mapbox token:', err);
-        setError('Failed to load map');
-      }
-    };
-    fetchToken();
-  }, []);
 
   // Simulate driver movement for demo
   useEffect(() => {
-    if (!restaurantLocation) return;
+    if (!restaurantLocation || !deliveryLocation) return;
 
     // Simulate rider movement from restaurant to delivery
     const simulateMovement = () => {
       const startLat = restaurantLocation.lat;
       const startLng = restaurantLocation.lng;
-      const endLat = KARACHI_CENTER.lat + (Math.random() - 0.5) * 0.02;
-      const endLng = KARACHI_CENTER.lng + (Math.random() - 0.5) * 0.02;
+      const endLat = deliveryLocation.lat;
+      const endLng = deliveryLocation.lng;
 
       let progress = 0;
       const interval = setInterval(() => {
@@ -87,115 +63,54 @@ const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
 
     const cleanup = simulateMovement();
     return cleanup;
-  }, [restaurantLocation]);
+  }, [restaurantLocation, deliveryLocation]);
 
-  // Update driver marker position
-  useEffect(() => {
-    if (!map.current || !driverLocation) return;
+  const restaurantLoc = restaurantLocation || KARACHI_AREAS.clifton;
+  const deliveryLoc = deliveryLocation || KARACHI_AREAS.dha;
+  const driverLoc = driverLocation || {
+    lat: (restaurantLoc.lat + deliveryLoc.lat) / 2,
+    lng: (restaurantLoc.lng + deliveryLoc.lng) / 2,
+  };
 
-    if (driverMarker.current) {
-      driverMarker.current.setLngLat([driverLocation.lng, driverLocation.lat]);
-    }
-  }, [driverLocation]);
-
-  useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
-
-    mapboxgl.accessToken = mapboxToken;
-
-    // Initialize map centered on Karachi
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [KARACHI_CENTER.lng, KARACHI_CENTER.lat],
-      zoom: 13,
-    });
-
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
-    // Add restaurant marker (green)
-    const restaurantLoc = restaurantLocation || KARACHI_AREAS.clifton;
-    new mapboxgl.Marker({ color: '#22c55e' })
-      .setLngLat([restaurantLoc.lng, restaurantLoc.lat])
-      .setPopup(new mapboxgl.Popup().setHTML('<strong>Restaurant</strong>'))
-      .addTo(map.current);
-
-    // Add delivery location marker (red)
-    const deliveryLoc = KARACHI_AREAS.dha;
-    new mapboxgl.Marker({ color: '#ef4444' })
-      .setLngLat([deliveryLoc.lng, deliveryLoc.lat])
-      .setPopup(new mapboxgl.Popup().setHTML(`<strong>Delivery</strong><br/>${deliveryAddress}`))
-      .addTo(map.current);
-
-    // Add driver/rider marker (orange)
-    const driverLoc = driverLocation || {
-      lat: (restaurantLoc.lat + deliveryLoc.lat) / 2,
-      lng: (restaurantLoc.lng + deliveryLoc.lng) / 2,
-    };
-
-    const el = document.createElement('div');
-    el.className = 'driver-marker';
-    el.innerHTML = '🛵';
-    el.style.fontSize = '32px';
-    el.style.cursor = 'pointer';
-
-    driverMarker.current = new mapboxgl.Marker({ element: el })
-      .setLngLat([driverLoc.lng, driverLoc.lat])
-      .setPopup(new mapboxgl.Popup().setHTML('<strong>Your Rider</strong>'))
-      .addTo(map.current);
-
-    // Fit map to show all markers
-    const bounds = new mapboxgl.LngLatBounds();
-    bounds.extend([restaurantLoc.lng, restaurantLoc.lat]);
-    bounds.extend([deliveryLoc.lng, deliveryLoc.lat]);
-    bounds.extend([driverLoc.lng, driverLoc.lat]);
-
-    map.current.fitBounds(bounds, {
-      padding: 60,
-      maxZoom: 15,
-    });
-
-    return () => {
-      map.current?.remove();
-    };
-  }, [mapboxToken, deliveryAddress, restaurantLocation]);
-
-  if (error) {
-    return (
-      <div className="w-full h-64 bg-muted rounded-xl flex items-center justify-center">
-        <div className="text-center text-muted-foreground">
-          <span className="text-4xl mb-2 block">🗺️</span>
-          <p>{error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!mapboxToken) {
-    return (
-      <div className="w-full h-64 bg-muted rounded-xl animate-pulse flex items-center justify-center">
-        <span className="text-muted-foreground">Loading map...</span>
-      </div>
-    );
-  }
+  // Build Google Maps Embed URL with markers
+  const mapUrl = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&origin=${restaurantLoc.lat},${restaurantLoc.lng}&destination=${deliveryLoc.lat},${deliveryLoc.lng}&mode=driving&zoom=13&language=en`;
 
   return (
     <div className="relative w-full h-64 sm:h-80 rounded-xl overflow-hidden shadow-md">
-      <div ref={mapContainer} className="absolute inset-0" />
-      <div className="absolute bottom-3 left-3 bg-background/90 backdrop-blur-sm rounded-lg px-3 py-2 text-sm">
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 bg-green-500 rounded-full"></span>
-          <span className="text-foreground">Restaurant</span>
+      <iframe
+        src={mapUrl}
+        width="100%"
+        height="100%"
+        style={{ border: 0 }}
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        className="absolute inset-0"
+      />
+
+      {/* Legend Overlay */}
+      <div className="absolute bottom-3 left-3 bg-background/95 backdrop-blur-sm rounded-lg px-3 py-2 text-sm shadow-lg border border-border">
+        <div className="flex items-center gap-2 mb-1">
+          <Home className="w-3 h-3 text-green-500" />
+          <span className="text-foreground text-xs">Restaurant</span>
+        </div>
+        <div className="flex items-center gap-2 mb-1">
+          <Navigation className="w-3 h-3 text-orange-500" />
+          <span className="text-foreground text-xs">Rider</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
-          <span className="text-foreground">Rider</span>
+          <MapPin className="w-3 h-3 text-red-500" />
+          <span className="text-foreground text-xs">Your Location</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 bg-red-500 rounded-full"></span>
-          <span className="text-foreground">Your Location</span>
-        </div>
+      </div>
+
+      {/* Live Tracking Badge */}
+      <div className="absolute top-3 right-3 bg-primary/95 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-lg flex items-center gap-1.5">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+        </span>
+        Live Tracking
       </div>
     </div>
   );

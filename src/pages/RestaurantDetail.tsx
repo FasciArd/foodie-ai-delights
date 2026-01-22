@@ -1,18 +1,19 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Star, Clock, MapPin, Heart, Share2 } from 'lucide-react';
-import { useState, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
-import MenuCard from '@/components/MenuCard';
-import SkeletonLoader from '@/components/SkeletonLoader';
-import Footer from '@/components/Footer';
-import ReviewSection from '@/components/ReviewSection';
-import { useRestaurant, useMenuItems } from '@/hooks/useRestaurants';
-import { formatPKR } from '@/lib/currency';
+import { useParams, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Star, Clock, MapPin, Heart, Share2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import MenuCard from "@/components/MenuCard";
+import SkeletonLoader from "@/components/SkeletonLoader";
+import Footer from "@/components/Footer";
+import ReviewSection from "@/components/ReviewSection";
+import { useRestaurant, useMenuItems } from "@/hooks/useRestaurants";
+import { formatPKR } from "@/lib/currency";
 const RestaurantDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [isLiked, setIsLiked] = useState(false);
 
   const { data: restaurant, isLoading: restaurantLoading } = useRestaurant(id);
@@ -21,14 +22,30 @@ const RestaurantDetail = () => {
   // Get unique categories from menu items
   const menuCategories = useMemo(() => {
     const cats = new Set(menuItems.map((item) => item.category));
-    return ['all', ...Array.from(cats)];
+    return ["all", ...Array.from(cats)];
   }, [menuItems]);
 
   // Filter menu items by category
   const filteredMenuItems = useMemo(() => {
-    if (selectedCategory === 'all') return menuItems;
+    if (selectedCategory === "all") return menuItems;
     return menuItems.filter((item) => item.category === selectedCategory);
   }, [menuItems, selectedCategory]);
+
+  const handleShare = async () => {
+    const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+
+    if (!shareUrl) {
+      toast.error("Unable to copy the link right now.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copied! Share it with anyone.");
+    } catch (error) {
+      toast.error("Failed to copy link. Please try again.");
+    }
+  };
 
   if (!restaurant) {
     return (
@@ -45,7 +62,7 @@ const RestaurantDetail = () => {
           <p className="text-muted-foreground mb-6">
             The restaurant you're looking for doesn't exist
           </p>
-          <Button onClick={() => navigate('/restaurants')}>
+          <Button onClick={() => navigate("/restaurants")}>
             Browse Restaurants
           </Button>
         </motion.div>
@@ -94,15 +111,16 @@ const RestaurantDetail = () => {
             size="icon"
             onClick={() => setIsLiked(!isLiked)}
             className={`bg-background/80 backdrop-blur-sm ${
-              isLiked ? 'text-destructive' : ''
+              isLiked ? "text-destructive" : ""
             }`}
           >
-            <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+            <Heart className={`w-5 h-5 ${isLiked ? "fill-current" : ""}`} />
           </Button>
           <Button
             variant="icon"
             size="icon"
             className="bg-background/80 backdrop-blur-sm"
+            onClick={handleShare}
           >
             <Share2 className="w-5 h-5" />
           </Button>
@@ -170,11 +188,11 @@ const RestaurantDetail = () => {
                 onClick={() => setSelectedCategory(category)}
                 className={`px-4 py-2 rounded-full whitespace-nowrap transition-all text-sm capitalize ${
                   selectedCategory === category
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card text-foreground border border-border hover:border-primary'
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-foreground border border-border hover:border-primary"
                 }`}
               >
-                {category === 'all' ? 'All Items' : category}
+                {category === "all" ? "All Items" : category}
               </motion.button>
             ))}
           </div>

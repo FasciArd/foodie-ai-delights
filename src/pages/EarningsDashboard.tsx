@@ -1,26 +1,35 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  Wallet, TrendingUp, ArrowDownToLine, Clock, CheckCircle, 
-  DollarSign, FileText, History, AlertCircle, Loader2, Receipt
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAuth } from '@/hooks/useAuth';
-import { useEarningsSummary, useWithdrawals } from '@/hooks/useEarnings';
-import { useWalletBalance } from '@/hooks/useWalletBalance';
-import { formatPKR } from '@/lib/currency';
-import { format } from 'date-fns';
-import Footer from '@/components/Footer';
-import WithdrawalModal from '@/components/WithdrawalModal';
-import TaxBillModal from '@/components/TaxBillModal';
-import TaxBillsHistory from '@/components/TaxBillsHistory';
-import { useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import {
+  Wallet,
+  TrendingUp,
+  ArrowDownToLine,
+  Clock,
+  CheckCircle,
+  DollarSign,
+  FileText,
+  History,
+  AlertCircle,
+  Loader2,
+  Receipt,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/hooks/useAuth";
+import { useEarningsSummary, useWithdrawals } from "@/hooks/useEarnings";
+import { useWalletBalance } from "@/hooks/useWalletBalance";
+import { formatPKR } from "@/lib/currency";
+import { format } from "date-fns";
+import Footer from "@/components/Footer";
+import WithdrawalModal from "@/components/WithdrawalModal";
+import TaxBillModal from "@/components/TaxBillModal";
+import TaxBillsHistory from "@/components/TaxBillsHistory";
+import { useNavigate } from "react-router-dom";
 
 const COMMISSION_RATES = {
-  restaurant: 0.10,
-  homechef: 0.10,
+  restaurant: 0.1,
+  homechef: 0.1,
   driver: 0.05,
 };
 
@@ -29,7 +38,7 @@ const EarningsDashboard = () => {
   const { user, userRole, loading: authLoading } = useAuth();
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
   const [taxBillModalOpen, setTaxBillModalOpen] = useState(false);
-  
+
   const {
     totalGross,
     totalCommission,
@@ -43,9 +52,12 @@ const EarningsDashboard = () => {
   // Use wallet balance hook for synced data
   const walletData = useWalletBalance();
 
-  const { data: withdrawals = [], isLoading: withdrawalsLoading } = useWithdrawals();
+  const { data: withdrawals = [], isLoading: withdrawalsLoading } =
+    useWithdrawals();
 
-  const commissionRate = userRole ? COMMISSION_RATES[userRole as keyof typeof COMMISSION_RATES] || 0.10 : 0.10;
+  const commissionRate = userRole
+    ? COMMISSION_RATES[userRole as keyof typeof COMMISSION_RATES] || 0.1
+    : 0.1;
 
   if (authLoading) {
     return (
@@ -55,16 +67,22 @@ const EarningsDashboard = () => {
     );
   }
 
-  if (!user || (userRole !== 'restaurant' && userRole !== 'driver')) {
+  if (!user || (userRole !== "restaurant" && userRole !== "driver")) {
     return (
       <div className="min-h-screen flex items-center justify-center pt-20">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-          <div className="text-6xl mb-4">💰</div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Earnings Dashboard</h2>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center"
+        >
+          <DollarSign className="w-16 h-16 text-primary mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-foreground mb-2">
+            Earnings Dashboard
+          </h2>
           <p className="text-muted-foreground mb-6">
             This dashboard is for restaurant owners and delivery partners
           </p>
-          <Button onClick={() => navigate('/role-registration')}>
+          <Button onClick={() => navigate("/role-registration")}>
             Register as Partner
           </Button>
         </motion.div>
@@ -73,10 +91,10 @@ const EarningsDashboard = () => {
   }
 
   const statusColors = {
-    pending: 'text-amber-500 bg-amber-500/10',
-    processing: 'text-blue-500 bg-blue-500/10',
-    completed: 'text-emerald-500 bg-emerald-500/10',
-    rejected: 'text-destructive bg-destructive/10',
+    pending: "text-amber-500 bg-amber-500/10",
+    processing: "text-blue-500 bg-blue-500/10",
+    completed: "text-emerald-500 bg-emerald-500/10",
+    rejected: "text-destructive bg-destructive/10",
   };
 
   return (
@@ -90,7 +108,9 @@ const EarningsDashboard = () => {
           >
             <div className="flex items-center gap-3 mb-2">
               <Wallet className="w-8 h-8 text-primary" />
-              <h1 className="text-3xl font-bold text-foreground">Earnings Dashboard</h1>
+              <h1 className="text-3xl font-bold text-foreground">
+                Earnings Dashboard
+              </h1>
             </div>
             <p className="text-muted-foreground">
               Track your earnings, commissions, and withdraw your money
@@ -116,7 +136,9 @@ const EarningsDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl sm:text-3xl font-bold text-primary">{formatPKR(availableBalance)}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-primary">
+                    {formatPKR(availableBalance)}
+                  </p>
                   <div className="flex gap-2 mt-3">
                     <Button
                       size="sm"
@@ -154,8 +176,12 @@ const EarningsDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl sm:text-3xl font-bold text-foreground">{formatPKR(pendingBalance)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Processing orders</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                    {formatPKR(pendingBalance)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Processing orders
+                  </p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -174,8 +200,12 @@ const EarningsDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl sm:text-3xl font-bold text-foreground">{formatPKR(withdrawnBalance)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Total payouts</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                    {formatPKR(withdrawnBalance)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Total payouts
+                  </p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -194,8 +224,12 @@ const EarningsDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl sm:text-3xl font-bold text-destructive">{(commissionRate * 100).toFixed(0)}%</p>
-                  <p className="text-xs text-muted-foreground mt-1">Deducted from earnings</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-destructive">
+                    {(commissionRate * 100).toFixed(0)}%
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Deducted from earnings
+                  </p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -213,7 +247,7 @@ const EarningsDashboard = () => {
                 Earnings
               </TabsTrigger>
               <TabsTrigger value="withdrawals" className="flex-1">
-                <History className="w-4 h-4 mr-2" />
+                <ArrowDownToLine className="w-4 h-4 mr-2" />
                 Withdrawals
               </TabsTrigger>
               <TabsTrigger value="taxes" className="flex-1">
@@ -226,8 +260,10 @@ const EarningsDashboard = () => {
             <TabsContent value="earnings" className="mt-6">
               {earnings.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="text-5xl mb-4">📊</div>
-                  <h3 className="text-xl font-bold text-foreground mb-2">No earnings yet</h3>
+                  <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-foreground mb-2">
+                    No earnings yet
+                  </h3>
                   <p className="text-muted-foreground">
                     Complete orders to start earning
                   </p>
@@ -238,16 +274,28 @@ const EarningsDashboard = () => {
                   <div className="bg-card border border-border rounded-xl p-4">
                     <div className="grid grid-cols-3 gap-4 text-center">
                       <div>
-                        <p className="text-sm text-muted-foreground">Total Gross</p>
-                        <p className="text-lg font-bold">{formatPKR(totalGross)}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Total Gross
+                        </p>
+                        <p className="text-lg font-bold">
+                          {formatPKR(totalGross)}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Commission</p>
-                        <p className="text-lg font-bold text-destructive">-{formatPKR(totalCommission)}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Commission
+                        </p>
+                        <p className="text-lg font-bold text-destructive">
+                          -{formatPKR(totalCommission)}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Net Earnings</p>
-                        <p className="text-lg font-bold text-primary">{formatPKR(totalNet)}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Net Earnings
+                        </p>
+                        <p className="text-lg font-bold text-primary">
+                          {formatPKR(totalNet)}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -263,25 +311,35 @@ const EarningsDashboard = () => {
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-medium">Order #{earning.order_id?.slice(0, 8)}</p>
+                            <p className="font-medium">
+                              Order #{earning.order_id?.slice(0, 8)}
+                            </p>
                             <p className="text-sm text-muted-foreground">
-                              {format(new Date(earning.created_at), 'PPP')}
+                              {format(new Date(earning.created_at), "PPP")}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-primary">{formatPKR(earning.net_amount)}</p>
-                            <span className={`text-xs px-2 py-1 rounded-full capitalize ${
-                              earning.status === 'available' ? 'bg-emerald-500/10 text-emerald-500' :
-                              earning.status === 'pending' ? 'bg-amber-500/10 text-amber-500' :
-                              'bg-muted text-muted-foreground'
-                            }`}>
+                            <p className="font-bold text-primary">
+                              {formatPKR(earning.net_amount)}
+                            </p>
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full capitalize ${
+                                earning.status === "available"
+                                  ? "bg-emerald-500/10 text-emerald-500"
+                                  : earning.status === "pending"
+                                    ? "bg-amber-500/10 text-amber-500"
+                                    : "bg-muted text-muted-foreground"
+                              }`}
+                            >
                               {earning.status}
                             </span>
                           </div>
                         </div>
                         <div className="mt-2 pt-2 border-t border-border flex justify-between text-sm text-muted-foreground">
                           <span>Gross: {formatPKR(earning.gross_amount)}</span>
-                          <span className="text-destructive">Commission: -{formatPKR(earning.commission_amount)}</span>
+                          <span className="text-destructive">
+                            Commission: -{formatPKR(earning.commission_amount)}
+                          </span>
                         </div>
                       </motion.div>
                     ))}
@@ -298,8 +356,10 @@ const EarningsDashboard = () => {
                 </div>
               ) : withdrawals.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="text-5xl mb-4">💸</div>
-                  <h3 className="text-xl font-bold text-foreground mb-2">No withdrawals yet</h3>
+                  <ArrowDownToLine className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-foreground mb-2">
+                    No withdrawals yet
+                  </h3>
                   <p className="text-muted-foreground">
                     Withdraw your available balance to see history
                   </p>
@@ -315,17 +375,21 @@ const EarningsDashboard = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{formatPKR(withdrawal.amount)}</p>
+                          <p className="font-medium">
+                            {formatPKR(withdrawal.amount)}
+                          </p>
                           <p className="text-sm text-muted-foreground capitalize">
                             {withdrawal.method} • {withdrawal.account_number}
                           </p>
                         </div>
                         <div className="text-right">
-                          <span className={`text-xs px-2 py-1 rounded-full capitalize ${statusColors[withdrawal.status]}`}>
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full capitalize ${statusColors[withdrawal.status]}`}
+                          >
                             {withdrawal.status}
                           </span>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {format(new Date(withdrawal.created_at), 'PPP')}
+                            {format(new Date(withdrawal.created_at), "PPP")}
                           </p>
                         </div>
                       </div>
@@ -364,7 +428,7 @@ const EarningsDashboard = () => {
         open={taxBillModalOpen}
         onOpenChange={setTaxBillModalOpen}
         earnings={earnings}
-        userType={userRole || 'restaurant'}
+        userType={userRole || "restaurant"}
       />
     </div>
   );

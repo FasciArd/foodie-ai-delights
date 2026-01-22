@@ -1,10 +1,18 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, X, Package, ChefHat, Truck, CheckCircle, XCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useSoundNotifications } from '@/hooks/useSoundNotifications';
-import { toast } from 'sonner';
+import React, { useEffect, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Bell,
+  X,
+  Package,
+  ChefHat,
+  Truck,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useSoundNotifications } from "@/hooks/useSoundNotifications";
+import { toast } from "sonner";
 
 interface OrderUpdate {
   id: string;
@@ -14,31 +22,45 @@ interface OrderUpdate {
   timestamp: Date;
 }
 
-const statusMessages: Record<string, { message: string; icon: React.ReactNode; soundType: 'orderAccepted' | 'orderOnTheWay' | 'orderDelivered' | 'orderCancelled' | 'newOrder' | 'newDelivery' | 'notification' }> = {
+const statusMessages: Record<
+  string,
+  {
+    message: string;
+    icon: React.ReactNode;
+    soundType:
+      | "orderAccepted"
+      | "orderOnTheWay"
+      | "orderDelivered"
+      | "orderCancelled"
+      | "newOrder"
+      | "newDelivery"
+      | "notification";
+  }
+> = {
   pending: {
-    message: 'Your order has been placed! 🎉',
+    message: "Your order has been placed!",
     icon: <Package className="w-5 h-5" />,
-    soundType: 'orderAccepted',
+    soundType: "orderAccepted",
   },
   preparing: {
-    message: 'Restaurant is preparing your food 👨‍🍳',
+    message: "Restaurant is preparing your food",
     icon: <ChefHat className="w-5 h-5" />,
-    soundType: 'orderAccepted',
+    soundType: "orderAccepted",
   },
   on_the_way: {
-    message: 'Your rider is on the way! 🛵',
+    message: "Your rider is on the way! 🛵",
     icon: <Truck className="w-5 h-5" />,
-    soundType: 'orderOnTheWay',
+    soundType: "orderOnTheWay",
   },
   delivered: {
-    message: 'Order delivered! Enjoy your meal 😋',
+    message: "Order delivered! Enjoy your meal",
     icon: <CheckCircle className="w-5 h-5" />,
-    soundType: 'orderDelivered',
+    soundType: "orderDelivered",
   },
   cancelled: {
-    message: 'Order was cancelled',
+    message: "Order was cancelled",
     icon: <XCircle className="w-5 h-5" />,
-    soundType: 'orderCancelled',
+    soundType: "orderCancelled",
   },
 };
 
@@ -47,53 +69,56 @@ const OrderNotification: React.FC = () => {
   const { playSound, soundEnabled } = useSoundNotifications();
   const [notifications, setNotifications] = useState<OrderUpdate[]>([]);
 
-  const handleOrderUpdate = useCallback((payload: any, isCustomer: boolean) => {
-    const newStatus = payload.new?.status as string;
-    const oldStatus = payload.old?.status as string;
+  const handleOrderUpdate = useCallback(
+    (payload: any, isCustomer: boolean) => {
+      const newStatus = payload.new?.status as string;
+      const oldStatus = payload.old?.status as string;
 
-    // Only notify if status changed
-    if (newStatus !== oldStatus && statusMessages[newStatus]) {
-      const statusInfo = statusMessages[newStatus];
-      
-      // Show toast notification
-      toast(statusInfo.message, {
-        icon: statusInfo.icon,
-        duration: 5000,
-      });
+      // Only notify if status changed
+      if (newStatus !== oldStatus && statusMessages[newStatus]) {
+        const statusInfo = statusMessages[newStatus];
 
-      // Play notification sound
-      if (soundEnabled) {
-        playSound(statusInfo.soundType);
+        // Show toast notification
+        toast(statusInfo.message, {
+          icon: statusInfo.icon,
+          duration: 5000,
+        });
+
+        // Play notification sound
+        if (soundEnabled) {
+          playSound(statusInfo.soundType);
+        }
+
+        // Add to notifications list
+        const notification: OrderUpdate = {
+          id: `${payload.new.id}-${Date.now()}`,
+          orderId: payload.new.id,
+          status: newStatus,
+          message: statusInfo.message,
+          timestamp: new Date(),
+        };
+
+        setNotifications((prev) => [notification, ...prev.slice(0, 4)]);
       }
-
-      // Add to notifications list
-      const notification: OrderUpdate = {
-        id: `${payload.new.id}-${Date.now()}`,
-        orderId: payload.new.id,
-        status: newStatus,
-        message: statusInfo.message,
-        timestamp: new Date(),
-      };
-
-      setNotifications((prev) => [notification, ...prev.slice(0, 4)]);
-    }
-  }, [playSound, soundEnabled]);
+    },
+    [playSound, soundEnabled],
+  );
 
   // Customer order updates
   useEffect(() => {
-    if (!user?.id || userRole !== 'customer') return;
+    if (!user?.id || userRole !== "customer") return;
 
     const channel = supabase
-      .channel('customer-order-notifications')
+      .channel("customer-order-notifications")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'orders',
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
           filter: `user_id=eq.${user.id}`,
         },
-        (payload) => handleOrderUpdate(payload, true)
+        (payload) => handleOrderUpdate(payload, true),
       )
       .subscribe();
 
@@ -104,62 +129,62 @@ const OrderNotification: React.FC = () => {
 
   // Restaurant new orders
   useEffect(() => {
-    if (!user?.id || userRole !== 'restaurant') return;
+    if (!user?.id || userRole !== "restaurant") return;
 
     // First get the restaurant ID
     const setupSubscription = async () => {
       const { data: restaurant } = await supabase
-        .from('restaurants')
-        .select('id')
-        .eq('owner_id', user.id)
+        .from("restaurants")
+        .select("id")
+        .eq("owner_id", user.id)
         .single();
 
       if (!restaurant) return;
 
       const channel = supabase
-        .channel('restaurant-order-notifications')
+        .channel("restaurant-order-notifications")
         .on(
-          'postgres_changes',
+          "postgres_changes",
           {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'orders',
+            event: "INSERT",
+            schema: "public",
+            table: "orders",
             filter: `restaurant_id=eq.${restaurant.id}`,
           },
           (payload) => {
-            toast.success('New order received! 🎉', { duration: 5000 });
+            toast.success("New order received!", { duration: 5000 });
             if (soundEnabled) {
-              playSound('newOrder');
+              playSound("newOrder");
             }
             const notification: OrderUpdate = {
               id: `${payload.new.id}-${Date.now()}`,
               orderId: payload.new.id as string,
-              status: 'new',
-              message: 'New order received! 🎉',
+              status: "new",
+              message: "New order received!",
               timestamp: new Date(),
             };
             setNotifications((prev) => [notification, ...prev.slice(0, 4)]);
-          }
+          },
         )
         .on(
-          'postgres_changes',
+          "postgres_changes",
           {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'orders',
+            event: "UPDATE",
+            schema: "public",
+            table: "orders",
             filter: `restaurant_id=eq.${restaurant.id}`,
           },
           (payload) => {
             const newStatus = payload.new?.status as string;
             const oldStatus = payload.old?.status as string;
-            
-            if (newStatus === 'cancelled' && oldStatus !== 'cancelled') {
-              toast.error('Order was cancelled', { duration: 5000 });
+
+            if (newStatus === "cancelled" && oldStatus !== "cancelled") {
+              toast.error("Order was cancelled", { duration: 5000 });
               if (soundEnabled) {
-                playSound('orderCancelled');
+                playSound("orderCancelled");
               }
             }
-          }
+          },
         )
         .subscribe();
 
@@ -173,47 +198,47 @@ const OrderNotification: React.FC = () => {
 
   // Driver delivery assignments
   useEffect(() => {
-    if (!user?.id || userRole !== 'driver') return;
+    if (!user?.id || userRole !== "driver") return;
 
     const setupSubscription = async () => {
       const { data: driver } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('user_id', user.id)
+        .from("drivers")
+        .select("id")
+        .eq("user_id", user.id)
         .single();
 
       if (!driver) return;
 
       const channel = supabase
-        .channel('driver-delivery-notifications')
+        .channel("driver-delivery-notifications")
         .on(
-          'postgres_changes',
+          "postgres_changes",
           {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'orders',
+            event: "UPDATE",
+            schema: "public",
+            table: "orders",
             filter: `driver_id=eq.${driver.id}`,
           },
           (payload) => {
             const newStatus = payload.new?.status as string;
             const oldDriverId = payload.old?.driver_id;
-            
+
             // New delivery assigned
             if (!oldDriverId && payload.new?.driver_id === driver.id) {
-              toast.success('New delivery assigned! 🛵', { duration: 5000 });
+              toast.success("New delivery assigned!", { duration: 5000 });
               if (soundEnabled) {
-                playSound('newDelivery');
+                playSound("newDelivery");
               }
               const notification: OrderUpdate = {
                 id: `${payload.new.id}-${Date.now()}`,
                 orderId: payload.new.id as string,
-                status: 'assigned',
-                message: 'New delivery assigned! 🛵',
+                status: "assigned",
+                message: "New delivery assigned!",
                 timestamp: new Date(),
               };
               setNotifications((prev) => [notification, ...prev.slice(0, 4)]);
             }
-          }
+          },
         )
         .subscribe();
 
