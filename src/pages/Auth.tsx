@@ -40,7 +40,6 @@ const phoneSchema = z
   .regex(/^(\+?92|0)?3\d{9}$/, "Use +923001234567 or 03001234567");
 const passwordSchema = z
   .string()
-  .min(8, "Password must be at least 8 characters")
   .regex(
     /^(?=.*[A-Za-z])(?=.*\d).+$/,
     "Include at least one letter and one number",
