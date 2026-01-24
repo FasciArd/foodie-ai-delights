@@ -2,7 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
@@ -12,10 +13,10 @@ serve(async (req) => {
 
   try {
     const { messages } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     const systemPrompt = `You are FoodieBot, an AI food assistant for FoodieHub - a food delivery app in Karachi, Pakistan. 
@@ -46,37 +47,55 @@ Common food items and approximate prices (PKR):
 - Nihari: 450-650
 - Karahi (Half): 1500-2500`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: systemPrompt }],
+            },
+            ...messages.map((msg: any) => ({
+              role: msg.role === "assistant" ? "model" : "user",
+              parts: [{ text: msg.content }],
+            })),
+          ],
+          generationConfig: {
+            temperature: 0.9,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
+          },
+        }),
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
-        max_tokens: 500,
-      }),
-    });
+    );
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ 
-          response: "I'm receiving too many requests right now. Please try again in a moment. 🙏" 
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({
+            response:
+              "I'm receiving too many requests right now. Please try again in a moment. 🙏",
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("Gemini API error:", response.status, errorText);
       throw new Error("AI service unavailable");
     }
 
     const data = await response.json();
-    const aiResponse = data.choices?.[0]?.message?.content || "I couldn't process that. Please try again.";
+    const aiResponse =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "I couldn't process that. Please try again.";
 
     return new Response(JSON.stringify({ response: aiResponse }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -84,13 +103,14 @@ Common food items and approximate prices (PKR):
   } catch (error) {
     console.error("Chatbot error:", error);
     return new Response(
-      JSON.stringify({ 
-        response: "Sorry, I'm having trouble connecting. Please try again in a moment." 
+      JSON.stringify({
+        response:
+          "Sorry, I'm having trouble connecting. Please try again in a moment.",
       }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      },
     );
   }
 });
