@@ -708,6 +708,28 @@ const RoleRegistration = () => {
     return 4; // driver
   };
 
+  // Visual indicator for business type selection (shown during restaurant registration)
+  const BusinessTypeIndicator = () => {
+    if (selectedRole !== 'restaurant' || step < 2) return null;
+    
+    return (
+      <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-4 ${
+        businessType === 'homechef' 
+          ? 'bg-amber-500/10 text-amber-700 border border-amber-500/30' 
+          : 'bg-primary/10 text-primary border border-primary/30'
+      }`}>
+        {businessType === 'homechef' ? (
+          <ChefHat className="w-4 h-4" />
+        ) : (
+          <Store className="w-4 h-4" />
+        )}
+        <span>
+          Registering as {businessType === 'homechef' ? 'Home Chef' : 'Restaurant'}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen pt-24 pb-12 bg-background">
       <div className="container mx-auto px-4 max-w-lg">
@@ -724,6 +746,13 @@ const RoleRegistration = () => {
         </div>
 
         <div className="bg-card rounded-2xl p-6 border border-border">
+          {/* Business Type Indicator - shown throughout restaurant registration */}
+          {step >= 2 && selectedRole === 'restaurant' && (
+            <div className="flex justify-center mb-4">
+              <BusinessTypeIndicator />
+            </div>
+          )}
+          
           {step === 1 && renderRoleSelection()}
           {step === 2 && selectedRole === 'customer' && renderCommonFields()}
           {step === 2 && selectedRole === 'restaurant' && renderBusinessTypeSelection()}
