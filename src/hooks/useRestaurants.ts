@@ -10,6 +10,7 @@ export function useRestaurants() {
         .from('restaurants')
         .select('*')
         .eq('is_active', true)
+        .eq('business_type', 'restaurant') // Only show restaurants, not homechefs
         .order('rating', { ascending: false });
       
       if (error) throw error;
@@ -44,6 +45,7 @@ export function useFeaturedRestaurants() {
         .from('restaurants')
         .select('*')
         .eq('is_active', true)
+        .eq('business_type', 'restaurant') // Only show restaurants, not homechefs
         .order('rating', { ascending: false })
         .limit(4);
       
