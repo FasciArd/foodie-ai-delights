@@ -206,17 +206,7 @@ const HomeChefsSection = () => {
           </div>
         )}
 
-        {showDemoData && (
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground mb-3">
-              Be the first to register as a HomeChef in your area!
-            </p>
-            <Button onClick={() => navigate('/role-registration')}>
-              <ChefHat className="w-4 h-4 mr-2" />
-              Become a HomeChef
-            </Button>
-          </div>
-        )}
+        {/* HomeChef registration is only available to restaurant owners - removed from customer view */}
 
         <div className="mt-8 text-center sm:hidden">
           <Button variant="outline" onClick={() => navigate('/homechefs')}>
