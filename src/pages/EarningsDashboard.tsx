@@ -39,6 +39,9 @@ const EarningsDashboard = () => {
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
   const [taxBillModalOpen, setTaxBillModalOpen] = useState(false);
 
+  // Determine the earnings filter based on role - drivers see driver earnings, restaurant owners see restaurant/homechef
+  const earningsUserType = userRole === 'driver' ? 'driver' : userRole === 'restaurant' ? 'restaurant' : undefined;
+  
   const {
     totalGross,
     totalCommission,
@@ -47,7 +50,7 @@ const EarningsDashboard = () => {
     pendingBalance,
     withdrawnBalance,
     earnings,
-  } = useEarningsSummary();
+  } = useEarningsSummary(earningsUserType);
 
   // Use wallet balance hook for synced data
   const walletData = useWalletBalance();

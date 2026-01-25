@@ -164,18 +164,12 @@ const HomeChefs = forwardRef<HTMLDivElement>((_, ref) => {
               <h3 className="text-xl font-bold text-foreground mb-2">No home chefs found</h3>
               <p className="text-muted-foreground mb-4">
                 {homeChefs.length === 0 
-                  ? "Be the first to register as a HomeChef!"
+                  ? "HomeChefs coming soon to your area!"
                   : "Try adjusting your search or filters"}
               </p>
-              {homeChefs.length === 0 ? (
-                <Button onClick={() => navigate('/role-registration')}>
-                  Register as HomeChef
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={() => { setSearchQuery(''); setSelectedArea('all'); }}>
-                  Clear Filters
-                </Button>
-              )}
+              <Button variant="outline" onClick={() => { setSearchQuery(''); setSelectedArea('all'); }}>
+                Clear Filters
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

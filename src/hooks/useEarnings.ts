@@ -29,19 +29,31 @@ export interface Withdrawal {
   processed_at: string | null;
 }
 
-export function useEarnings() {
+export function useEarnings(userType?: 'restaurant' | 'homechef' | 'driver') {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['earnings', user?.id],
+    queryKey: ['earnings', user?.id, userType],
     queryFn: async (): Promise<Earning[]> => {
       if (!user) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('earnings')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
+
+      // Filter by user_type if provided to ensure role isolation
+      if (userType) {
+        if (userType === 'restaurant') {
+          // Restaurant owners see both restaurant and homechef earnings
+          query = query.in('user_type', ['restaurant', 'homechef']);
+        } else {
+          query = query.eq('user_type', userType);
+        }
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return (data || []) as Earning[];
@@ -50,8 +62,8 @@ export function useEarnings() {
   });
 }
 
-export function useEarningsSummary() {
-  const { data: earnings = [] } = useEarnings();
+export function useEarningsSummary(userType?: 'restaurant' | 'homechef' | 'driver') {
+  const { data: earnings = [] } = useEarnings(userType);
 
   const totalGross = earnings.reduce((sum, e) => sum + e.gross_amount, 0);
   const totalCommission = earnings.reduce((sum, e) => sum + e.commission_amount, 0);
